@@ -1,8 +1,16 @@
 # 기본 야구 환경 구현 계획
 
+## 최신 진행 — 2026-09-18
+
+후속 요청으로 다음 우선순위를 주루보다 **타자 학습용 제어·평가**로 변경했다. 몸 위치와 상대 배트 위치를 독립 명령으로 제공하고, 실제 스윙 각도·타이밍을 포함해 네 항목의 원시 오차/점수를 제공한다. 환경 측 구현과 반복 검증을 완료한 뒤 ML-Agents 어댑터/에피소드 초기 분포/보상 정의를 후속 작업으로 둔다. 자세의 기준과 API는 `batting-evaluation.md`를 따른다. 기존 단계 4~7은 보류 상태이며 삭제하지 않는다.
+
+사용자 요청으로 단계 3 타자·스윙·접촉·타구 계산을 구현했다. 기존 씬에 타자를 연결하고 P/Space/방향키/R 조작, 스크립트용 SwingCommand, 타격 기록 HUD를 추가했다. Unity 실제 물리의 정상/이른/늦은 스윙, 좌우 각도, 10회 초기화 검증을 실행했다(verification.md 12.3). 직접 키 입력과 Game 뷰 외형 확인은 남아 있다.
+
+아래의 단계 3~7 미구현 설명 중 단계 3은 이 기록으로 대체한다. 단계 4~7, 주루·수비·야구 결과 판정은 계속 미구현이다. 현 단계 타구 관찰은 `BattedBallInFlight`로 구분하고 장외/12초로 종료한다. 이후 작업은 사용자가 요청할 때 단일 주자 이동부터 진행한다.
+
 ## 1. 계획 상태와 진행 원칙
 
-이 문서는 앞으로 수행할 작업 계획이다. 2026-09-11 현재 아래 1~7단계는 모두 **미구현·미검증** 상태이며, 이번 문서 작성 작업에서는 Unity 에셋이나 C# 코드를 변경하지 않았다.
+이 문서는 앞으로 수행할 작업 계획이다. 2026-09-11 기준으로 **단계 1은 구현 완료(일부 검증)**이었고, 2026-09-12에 **단계 2는 피칭머신 범위로 부분 구현(일부 검증)**했다. **단계 3~7은 여전히 미구현·미검증**이다. 각 단계의 현재 상태는 아래 "상태" 줄에 적고, 실제 실행한 검증과 실행하지 못한 검증은 `verification.md`에서 구분한다.
 
 각 단계는 Unity Editor에서 독립적으로 실행해 눈으로 확인할 수 있는 결과를 남긴다. 앞 단계의 완료 조건을 만족하기 전에는 뒤 단계의 규칙을 한꺼번에 추가하지 않는다. 구현 중 명세와 다른 선택이 필요하면 코드만 바꾸지 말고 `environment-spec.md`, `architecture.md`, `verification.md`를 함께 갱신한다.
 
@@ -18,7 +26,7 @@
 
 ## 2. 단계 1 — 야구장과 기본 배치
 
-**상태:** 계획됨
+**상태:** 구현 완료, 일부 검증 (2026-09-11)
 
 **목적:** 좌표와 거리를 눈으로 확인할 수 있고 이후 모든 동작이 공유할 기준 Transform을 만든다.
 
@@ -59,9 +67,37 @@
 - 외부 에셋 없이 필드 영역과 주요 위치를 구분할 수 있다.
 - 기존 `SampleScene`과 그 참조를 훼손하지 않는다.
 
+### 2.1 실제 구현 결과 (2026-09-11)
+
+만든 파일은 다음과 같다.
+
+| 경로 | 내용 |
+| --- | --- |
+| `Assets/BaseballSimulation/Scripts/Core/SimulationContracts.cs` | `BaseId` 열거형만. 나머지 계약 값은 사용하는 단계에서 추가한다. |
+| `Assets/BaseballSimulation/Scripts/Settings/BaseballEnvironmentConfig.cs` | 필드 좌표, 경기 경계, Gizmo 토글과 `TryValidate` |
+| `Assets/BaseballSimulation/Scripts/World/FieldLayout.cs` | 기준 Transform 참조, 주루 경로, 페어/경계 질의, Gizmo |
+| `Assets/BaseballSimulation/Scripts/Editor/BaseballPlaygroundBuilder.cs` | 씬·머티리얼·설정 에셋 생성과 검증 메뉴 |
+| `Assets/BaseballSimulation/Scenes/BaseballPlayground.unity` | 위 스크립트로 Editor가 생성한 씬 |
+| `Assets/BaseballSimulation/Materials/*.mat` | URP Lit 단색 머티리얼 8개(필드 6, 관중석 2) |
+| `Assets/BaseballSimulation/Config/DefaultBaseballEnvironment.asset` | 기본 설정 에셋 |
+
+씬은 손으로 YAML을 쓰지 않고 `Tools > Baseball Simulation > Build Playground Scene` 메뉴가 Unity Editor API로 만든다. 같은 메뉴를 다시 실행하면 규격대로 다시 만들고, `Tools > Baseball Simulation > Validate Playground Scene`은 기준점 참조와 실측 거리를 Console에 출력한다.
+
+씬 구성은 `BaseballEnvironment/Field` 아래에 `Ground`, `FairTerritory`, `FoulTerritory`, `Infield`, `FoulVisuals`, `Home`/`First`/`Second`/`Third`/`PitcherPlate`, `PitchOrigin`, `PitchTarget`, `PlayBoundary`를 두고, `SampleScene`에서 가져온 `Main Camera`, `Directional Light`, `Global Volume`을 최상위에 둔다. `FieldLayout`은 `Field`에 붙는다. GameObject는 필드 65개와 관중석 132개를 합쳐 197개다.
+
+페어 영역은 경계 반경 `110 m` 원판(`FairTerritory`) 위에 페어가 아닌 세 방향을 지면 색 사각 판(`FoulTerritory`)으로 덮어 만든다. 원판과 쐐기 모두 홈을 기준으로 하므로 보이는 페어 영역이 `z >= abs(x)` 조건과 원형 경계에 그대로 맞는다. `Infield`는 흙 다이아몬드(한 변 `27.4357 m`) 위에 안쪽 잔디(한 변 `21.0357 m`)를 얹어 폭 `3.2 m`의 베이스 패스를 남기고, 투수판에 반경 `2.74 m` 마운드, 홈에 반경 `3.96 m` 원을 둔다.
+
+`Stands`는 사용자 요청으로 추가한 표시 전용 관중석이며 `Field`가 아닌 형제 그룹이다. 경계 밖 `114 m`부터 단 깊이 `8 m`, 단 높이 `3 m`로 4단을 두르고 각 단을 32조각으로 나눈다(총 128개). 가장 바깥 단은 외벽 역할이라 색을 구분한다. Collider가 없고 경계 안으로 들어오지 않아 판정에 관여하지 않는다.
+
+베이스 표식은 **빈 GameObject(기준점) + 자식 `Visual`(표시용 판)** 구조다. 기준점은 명세 좌표에 정확히 두고, 보이는 판만 지면 위로 몇 cm 띄운다. 이렇게 하지 않으면 `FieldLayout`이 보고하는 베이스 좌표에 표시용 높이가 섞인다.
+
+물리 지면은 `Ground`의 MeshCollider 하나뿐이고, 나머지 표시용 판과 경계 표식에서는 Collider를 제거했다.
+
+**검증 결과는 `verification.md` 12장에 기록했다.**
+
 ## 3. 단계 2 — 공 물리와 직구
 
-**상태:** 계획됨
+**상태:** 부분 구현 — 피칭머신(직구 하나, 중앙 통과, 재투구, 초기화) (2026-09-12). 실행 기록은 `verification.md` 12.2.
 
 **목적:** 설정 가능한 시작점·목표·속도로 공을 한 번 던지고 위치·속도·정지·장외 상태를 확인한다.
 
@@ -76,7 +112,7 @@
 2. `BallController`에 자유 이동, 소유/대기, 지면 접촉, 정지 상태를 구현한다.
 3. `SimulationContracts`에 최소 투구 명령·공 상태·환경 이벤트 값을 정의한다.
 4. `PlayDirector`의 `Ready → PitchInFlight` 최소 흐름과 `ThrowPitch` 명령 검사를 만든다.
-5. 시작점에서 목표점 방향으로 기본 `36 m/s` 속도를 한 번 적용한다.
+5. 시작점에서 중력 낙하를 보정한 `36 m/s` 초기 속도를 계산해 목표(스트라이크존 중앙)를 통과하도록 한 번 적용한다.
 6. 위치, 속도, 지면 접촉, 경계 이탈, 정지 시간 정보를 디버그 표시한다.
 7. 임시 Inspector 버튼이나 한 개의 테스트 키로 투구와 초기 위치 복귀를 확인한다. 이 임시 진입점도 공 API를 직접 우회하지 않는다.
 
@@ -99,6 +135,28 @@
 - 공 위치·속도·소유/접촉 상태를 외부에서 읽을 수 있다.
 - 정지 또는 장외 조건에서 무한히 진행하지 않는다.
 - 아직 변화구, 스핀, 학습 입력을 추가하지 않는다.
+
+### 3.1 실제 구현 결과 — 피칭머신 (2026-09-12)
+
+사용자가 이 단계 전체가 아니라 **피칭머신(직구 하나, 중앙 통과, 재투구, 초기화)**을 명시적으로 요청해 그 범위로 구현했다. 공 소유권(포구·송구에 의한 획득/해제), 정지 기준 기반 `DeadBall`, 가변 `PitchCommand`(속력·목표를 명령 인자로 받는 일반화)는 이번에 포함하지 않았다.
+
+만든/바꾼 파일은 다음과 같다.
+
+| 경로 | 내용 |
+| --- | --- |
+| `Assets/BaseballSimulation/Scripts/Core/SimulationContracts.cs` | `PlayState`(Ready/PitchInFlight/Ended), `PitchEndReason`, 읽기 전용 `PitchSnapshot` 추가 |
+| `Assets/BaseballSimulation/Scripts/Core/PlayDirector.cs` | 신규. 중력 보정 탄도 계산(`TryComputeLaunchVelocity`), 목표 평면 교차 계산(`TryComputePlaneCrossing`), 투구/초기화 명령, 자동 반복 |
+| `Assets/BaseballSimulation/Scripts/World/BallController.cs` | 신규. Rigidbody 발사·초기화, 질량·연속 충돌 검사(CCD)·보간 설정 |
+| `Assets/BaseballSimulation/Scripts/Input/ManualPlayController.cs` | 신규. P=투구, R=초기화(새 Input System `Keyboard.current`) |
+| `Assets/BaseballSimulation/Scripts/Presentation/DebugPresenter.cs` | 신규. OnGUI HUD(상태, 공 속력, 통과 오차, 조작 안내) |
+| `Assets/BaseballSimulation/Scripts/Settings/BaseballEnvironmentConfig.cs` | 공 반지름/질량, 투구 속력·제한 시간, 목표 뒤쪽 여유 거리, 스트라이크존 절반 폭/높이와 검증 추가 |
+| `Assets/BaseballSimulation/Scripts/Editor/BaseballPlaygroundBuilder.cs` | 피칭머신 외형(받침대/본체/발사구), 스트라이크존 표시, 공, `Actors`/`Systems` 그룹과 컴포넌트 배선 추가 |
+
+피칭머신 외형은 `PitchOrigin`의 자식으로 Cube(받침대) + Cylinder 2개(본체·발사구)를 두고 모든 부품에서 Collider를 제거했다. 발사구 앞면이 `PitchOrigin`과 정확히 겹치고 본체는 홈 반대 방향으로 뻗어 있어 공 발사를 가리지 않는다. 스트라이크존 표시는 `PitchTarget`의 자식으로 테두리 막대 4개와 중앙 표시 1개를 두며 역시 Collider가 없다.
+
+`PlayDirector`는 환경 명세 6장 상태表의 부분집합(`Ready`/`PitchInFlight`/`Ended`)만 쓴다. 목표 평면 통과는 이전·현재 고정 시간 단계 위치를 잇는 선분과 평면의 교차점으로 계산해(`TryComputePlaneCrossing`) 빠른 공도 놓치지 않는다. 초기 속도는 목표 방향으로 속도만 적용하는 대신 `TryComputeLaunchVelocity`로 중력 낙하를 보정한 값을 계산하며, 같은 조건에 두 해(낮고 빠른 해/높은 포물선 해)가 있을 때 항상 더 평평한 해를 골라 "빠르고 낮은 탄도" 요구를 만족한다.
+
+**검증 결과는 `verification.md` 12.2에 기록했다.**
 
 ## 4. 단계 3 — 타격
 
@@ -320,6 +378,16 @@
 | 수동·스크립트 입력과 디버그 HUD | 운영 UI, 멀티플레이, 관중·중계 |
 | 환경 명령·스냅샷·이벤트·초기화 | ML-Agents, 관측/행동 공간, 보상, 학습 |
 
-## 10. 첫 번째 구현 작업
+## 10. 다음 구현 작업
 
-다음 구현 요청에서 가장 먼저 할 일은 **단계 1의 `BaseballPlayground.unity`와 FieldLayout 기준점 만들기**다. 홈 원점, 베이스·투수 좌표, 파울선, 경계를 기본 도형으로 배치하고 거리 Gizmo로 검증한다. 이 작업에는 공 동작, 플레이 판정, ML-Agents를 섞지 않는다.
+단계 1(`BaseballPlayground.unity`와 FieldLayout 기준점)은 끝났다. 단계 2는 사용자가 명시적으로 요청한 **피칭머신(직구 하나, 중앙 통과, 재투구, 초기화)** 범위로 부분 구현했다(12.2 기록).
+
+단계 2에서 남은 것(사용자가 명시적으로 다음 단계로 확장하기 전에는 추가하지 않는다):
+
+- 공 소유권(포구·송구에 의한 획득/해제)과 정지 기준 기반 `DeadBall`
+- 속력·목표를 인자로 받는 일반화된 `PitchCommand`(현재는 항상 설정값 그대로 던진다)
+- `RunnerDefense`/`Resetting` 상태와 관련 전이
+
+다음 구현 요청에서 가장 먼저 할 일은 **단계 3의 타격**이다. 타자/배트 배치, `SwingCommand`, 휩쓸림 접촉 검사, 접촉 시 단순 타구 계산까지만 만든다. 이 작업에 주루, 수비, 결과 판정, ML-Agents를 섞지 않는다.
+
+단계 3을 시작하기 전에 Unity Editor에서 단계 1의 미실행 검증 항목(`verification.md` 12.1)과 피칭머신의 미실행 검증 항목(`verification.md` 12.2)을 먼저 확인한다.

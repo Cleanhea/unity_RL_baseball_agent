@@ -1,5 +1,21 @@
 # 기본 야구 환경 아키텍처
 
+## 최신 구현 변경 — 2026-09-18
+
+네 항목 평가 확장: `BatterSetupCommand`(타자 X/Z·상대 손잡이 X/Y/Z), `BattingEvaluation` 읽기 전용 값 타입, `RequestBatterSetup`/`GetBattingEvaluation`/`BattingEvaluated`를 추가했다. Director는 이전 물리 구간 관찰 → Ready 자세 명령 → 투구 → 스윙 순서로 실행하고 초기화는 모두 취소한다. 발사한 틱의 시간을 미리 더하던 1틱 오차를 제거했다. 초기화는 타자/배트 자세도 복원한다. 입력 소스는 ManualInputEnabled로 구분한다. 상세 책임과 평가 정의는 `batting-evaluation.md`를 따른다.
+
+BatterController는 목표 고정 손잡이를 제거하고 몸 위치에 상대 손잡이를 더한다. 실제 스윙 평면과 접촉 시 진행 접선이 출력 타구를 결정한다. 전체 스윙을 공간 검사하며 타이밍 허용폭은 점수 계산에만 사용한다. 배트 표시와 판정은 같은 기하 함수를 공유한다. 아래 이전 버전의 중간 시각 제한/단순 출력각 설명은 대체된다.
+
+스윙 시작·끝 각도는 BaseballEnvironmentConfig가 소유한다. BatterController의 표시·접촉 Direction과 세부 검사 간격이 이 값을 공유하며, 고정 160° 회전 가정은 제거했다. 유효성 검사는 역방향/영폭 스윙 및 비유한·범위 밖 각도를 거부한다.
+
+`Scripts/World/BatterController.cs`가 스윙 자세, 동시각 공/배트 휩쓸림 근사, 타구 속도 계산을 맡는다. 현재 파일 수를 줄이기 위해 별도 Actors 폴더나 Resolver는 만들지 않았다. `PlayDirector`가 Inspector의 명시적 타자 참조를 가지고 시작 시 설정과 목표점을 전달한다. `RequestSwing(SwingCommand)`는 다음 FixedUpdate에서 이전 물리 구간 판정을 마친 뒤 수락된다. 초기화가 같은 틱의 투구·스윙 요청보다 우선한다. 중복 스윙과 잘못된 상태·비유한 각도를 거부한다.
+
+`SwingStarted`, `BallBatContact(Vector3)` C# 이벤트와 `HasSwung`, `HasContact`, `ContactQuality` 읽기 전용 속성을 추가했다. HUD는 기존 PitchSnapshot과 이 속성들을 읽는다. 조준 표시는 ManualPlayController가 Director의 Aim 속성에 전달하는 입력 미리보기이며 접촉 계산은 수락 당시 SwingCommand 값을 쓴다. 사건 시각·틱·시드를 포함하는 전체 이벤트 계약은 후속 작업이다.
+
+`BatterSceneSetup.AddBatter`는 현재 씬에 타자 도형을 추가하고 참조를 연결하는 Editor 메뉴다. 기존 타자 참조가 있으면 중복 생성하지 않는다. `BaseballPlaygroundBuilder`도 이 함수를 호출한다. 표시 도형에는 Collider가 없고 기존 머티리얼을 재사용한다. 런타임 이름 검색·자동 생성은 하지 않는다. 현재 씬에는 Editor API로 타자와 참조를 저장했다.
+
+설정 데이터에 스윙 0.25초, 접촉 중심 반폭 0.05초, 접촉 반경 0.09m, 배트 1m, 타구 속력 8–32m/s, 타구 관찰 제한 12초를 추가했다. 아래 타격 미구현 설명은 이전 단계 기록이며 최신 범위는 환경 명세의 최신 구현 절을 따른다.
+
 ## 1. 목적과 현재 제약
 
 이 문서는 `docs/environment-spec.md`의 계획을 현재 Unity 프로젝트에서 구현하기 위한 최소 구조를 정의한다. 목표는 확장 가능한 거대 프레임워크가 아니라, 투구부터 초기화까지 한 플레이를 읽고 고칠 수 있는 책임 분리다.
@@ -21,30 +37,36 @@
 Assets/
 └─ BaseballSimulation/
    ├─ Scenes/
-   │  └─ BaseballPlayground.unity
+   │  └─ BaseballPlayground.unity          # 있음
    ├─ Scripts/
    │  ├─ Core/
-   │  │  ├─ PlayDirector.cs
-   │  │  └─ SimulationContracts.cs
+   │  │  ├─ PlayDirector.cs                # 있음 (피칭머신 범위: Ready/PitchInFlight/Ended)
+   │  │  └─ SimulationContracts.cs         # 있음 (BaseId, PlayState, PitchEndReason, PitchSnapshot)
    │  ├─ World/
-   │  │  ├─ FieldLayout.cs
-   │  │  └─ BallController.cs
+   │  │  ├─ FieldLayout.cs                 # 있음
+   │  │  └─ BallController.cs              # 있음
    │  ├─ Actors/
    │  │  ├─ BatterController.cs
    │  │  ├─ RunnerController.cs
    │  │  └─ FielderController.cs
    │  ├─ Input/
-   │  │  ├─ ManualPlayController.cs
+   │  │  ├─ ManualPlayController.cs        # 있음 (P=투구, R=초기화)
    │  │  └─ ScriptedPlayController.cs
    │  ├─ Presentation/
-   │  │  └─ DebugPresenter.cs
+   │  │  └─ DebugPresenter.cs              # 있음 (OnGUI HUD)
+   │  ├─ Editor/
+   │  │  └─ BaseballPlaygroundBuilder.cs   # 있음
    │  └─ Settings/
-   │     └─ BaseballEnvironmentConfig.cs
+   │     └─ BaseballEnvironmentConfig.cs   # 있음
    ├─ Config/
-   │  └─ DefaultBaseballEnvironment.asset
-   ├─ Materials/
-   └─ Prefabs/              # 재사용 가치가 생긴 객체만 승격
+   │  └─ DefaultBaseballEnvironment.asset  # 있음
+   ├─ Materials/                           # 있음
+   └─ Prefabs/              # 재사용 가치가 생긴 객체만 승격 (아직 없음)
 ```
+
+`# 있음` 표시가 없는 항목은 아직 만들지 않았다. 폴더도 실제로 쓸 때 만든다.
+
+`Scripts/Editor/`는 Unity가 Editor 전용 어셈블리로 컴파일하는 폴더다. `BaseballPlaygroundBuilder`는 씬과 기본 에셋을 Editor API로 만들고 기준점을 검증한다. 씬 YAML을 손으로 쓰지 않기 위한 도구이며 런타임 환경 동작에는 관여하지 않는다.
 
 `BaseballPlayground.unity`는 기존 `SampleScene`의 카메라·조명·Global Volume 구성을 출발점으로 삼되 별도 씬으로 저장하는 것을 기본 선택으로 한다. 이렇게 하면 템플릿 씬을 보존하면서 환경 전용 루트를 명확히 할 수 있다. 첫 구현에서 한 번만 쓰는 도형을 모두 프리팹으로 만들 필요는 없다. 공이나 선수처럼 반복 생성·참조할 이유가 확인될 때만 프리팹으로 승격한다.
 
@@ -74,23 +96,31 @@ Assets/
 
 ```text
 BaseballEnvironment
-├─ Field
-│  ├─ Ground / Infield / Outfield / FoulVisuals
-│  ├─ Home / First / Second / Third
-│  ├─ PitchOrigin / PitchTarget
+├─ Field                                              # FieldLayout이 붙는다
+│  ├─ Ground / FairTerritory / FoulTerritory
+│  ├─ Infield
+│  │  └─ InfieldDirt / InfieldGrass / PitcherMound / HomeCircle
+│  ├─ FoulVisuals
+│  ├─ Home / First / Second / Third / PitcherPlate    # 기준점 + 자식 Visual
+│  ├─ PitchOrigin                                     # 있음
+│  │  └─ PitchingMachine (Stand/Body/Muzzle)          # 있음, 표시 전용·Collider 없음
+│  ├─ PitchTarget                                     # 있음
+│  │  └─ StrikeZoneVisual (Top/Bottom/Left/Right/Center) # 있음, 표시 전용·Collider 없음
 │  └─ PlayBoundary
+├─ Stands                                             # 표시 전용, 경계 밖
+│  └─ Tier_00..03 / Section_00..31
 ├─ Actors
-│  ├─ Ball
-│  ├─ Batter
+│  ├─ Ball                                            # 있음
+│  ├─ Batter                                          # 아직 없음
 │  │  └─ Bat
 │  ├─ BatterRunner
 │  ├─ BallFielder
 │  └─ FirstBaseman
 ├─ Systems
-│  ├─ PlayDirector
-│  ├─ ManualPlayController
-│  ├─ ScriptedPlayController
-│  └─ DebugPresenter
+│  ├─ PlayDirector                                    # 있음 (Ready/PitchInFlight/Ended)
+│  ├─ ManualPlayController                            # 있음 (P/R 키)
+│  ├─ ScriptedPlayController                          # 아직 없음
+│  └─ DebugPresenter                                  # 있음 (OnGUI HUD)
 ├─ Main Camera
 ├─ Directional Light
 └─ Global Volume
@@ -127,9 +157,13 @@ Director가 제공할 최소 명령은 다음과 같다. 메서드명은 구현 
 
 명령은 요청 값일 뿐이다. Director는 현재 상태, 소유권, 대상 유효성을 검사해 수락 또는 거부하고, 입력 컨트롤러는 컴포넌트 Transform·Rigidbody·결과를 직접 바꾸지 않는다. 프레임 입력은 명령 큐에 넣고 고정 시간 단계에서 적용해 물리 시점과 맞춘다.
 
+**현재 구현(피칭머신, 2026-09-12):** `PlayDirector.RequestThrowPitch()`와 `RequestResetPlay()`만 있다. 직구 하나이며 매번 같은 속력이라 `PitchCommand` 매개변수가 필요 없어 만들지 않았다. `Swing`, `SetRunnerTarget`, `MoveFielder`, `ThrowTo`, `SetPaused`는 아직 없다.
+
 ### 4.2 상태 조회
 
 `GetSnapshot()`에 해당하는 읽기 전용 스냅샷은 플레이 상태, 결과, 시간, 시드, 공, 선수, 베이스, 주자를 한 시점 기준으로 반환한다. 외부 코드는 스냅샷을 통해 내부 컬렉션이나 Transform을 수정할 수 없어야 한다.
+
+**현재 구현:** `PlayDirector.GetSnapshot()`은 `SimulationContracts.cs`의 읽기 전용 구조체 `PitchSnapshot`(상태, 경과 시간, 공 속력·위치, 목표 통과 오차 유무·값, 종료 사유, 마지막 거부 사유, 완료한 투구 수, 자동 반복 상태)을 돌려준다. `DebugPresenter`는 이 스냅샷만 읽는다. 결과·시드·선수·베이스·주자는 아직 스냅샷에 없다(해당 기능이 없어서다).
 
 HUD는 매 프레임 최신 스냅샷을 표시할 수 있다. 스크립트 검증은 특정 이벤트를 기다린 뒤 스냅샷으로 결과를 확인한다. 향후 학습 연결이 필요해도 먼저 이 상태가 환경 검증에 충분한지 확인하고, 현재 단계에서 벡터 배열과 정규화를 추가하지 않는다.
 
@@ -195,6 +229,8 @@ HUD는 매 프레임 최신 스냅샷을 표시할 수 있다. 스크립트 검�
 런타임 플레이 상태를 ScriptableObject에 쓰지 않는다. 시작 시 설정값을 읽고, 플레이 중 사용할 값은 환경 인스턴스가 보유한다. Play Mode 종료 후 에셋에 임시 값이 남는 것을 방지한다.
 
 설정에는 유효 범위 검사와 의미 있는 단위를 표시한다. 잘못된 음수 속도, 0 이하 제한 시간, 역전된 최소/최대 값은 플레이 시작 전에 차단한다.
+
+**현재 구현:** 필드 좌표·경기 경계·Gizmo 토글(단계 1)에 이어 공 반지름/질량, 투구 속력, 투구 제한 시간, 목표 뒤쪽 여유 거리, 스트라이크존 절반 폭/높이를 추가했다. 자동 반복 투구 토글·간격은 재사용 가치가 낮고 `PlayDirector` 하나만 쓰므로 Config가 아니라 `PlayDirector`의 Inspector 필드에 직접 둔다 — "쓰는 곳이 없는 설정을 미리 만들지 않는다"는 2장 원칙과, 여기 7장의 "재사용 카테고리만 Config에 모은다"는 취지를 함께 따른 결정이다.
 
 ## 8. 초기 배치와 재현성
 
