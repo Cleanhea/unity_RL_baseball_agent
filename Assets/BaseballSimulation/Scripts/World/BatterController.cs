@@ -19,6 +19,7 @@ namespace BaseballSimulation
         private float contactTime = -1f;
         private Vector3 exitVelocity;
         private SwingCommand command;
+        private float swingPowerMultiplier = 1f;
         public bool HasSwung => startedAt >= 0f;
         public bool HasContact { get; private set; }
         public float ContactQuality { get; private set; }
@@ -44,6 +45,7 @@ namespace BaseballSimulation
             exitVelocity = Vector3.zero;
             HasContact = false;
             ContactQuality = 0f;
+            swingPowerMultiplier = 1f;
             command = new SwingCommand(config.ReferenceSwingAngles.x, config.ReferenceSwingAngles.y);
             referencePosition = new Vector3(targetPosition.x + config.ReferenceStanceOffset.x,
                 config.HomePosition.y, targetPosition.z + config.ReferenceStanceOffset.y);
@@ -84,6 +86,7 @@ namespace BaseballSimulation
         {
             command = value;
             startedAt = time;
+            swingPowerMultiplier = Random.Range(1.2f, 2f);
             Pose(0f);
         }
 
@@ -139,7 +142,7 @@ namespace BaseballSimulation
                 float timingQuality = expectedArrival >= 0f ? Quality(TimingError(), config.ContactHalfWindow) : 0f;
                 ContactQuality = timingQuality * Quality(sweetError, 0.5f);
                 // Actual bat tangent drives exit direction, rather than an independent aim override.
-                exitVelocity = GetSwingDirection(age) * Mathf.Lerp(config.MinExitSpeed, config.MaxExitSpeed, ContactQuality);
+                exitVelocity = GetSwingDirection(age) * (Mathf.Lerp(config.MinExitSpeed, config.MaxExitSpeed, ContactQuality) * swingPowerMultiplier);
                 velocity = exitVelocity;
                 return true;
             }

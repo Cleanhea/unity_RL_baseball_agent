@@ -1,5 +1,10 @@
 # Unity Editor 검증 절차
 
+### 스윙 파워 120~200% 변경 (2026-09-18)
+
+스윙 시작 시 1.2~2.0배를 한 번 추첨해 기존 접촉 품질 기반 타구 속도에 곱한다. 코드 검토로 추첨 위치, 접촉 시 적용, 초기화와 평가 점수 분리를 확인했다. Unity MCP 세션에 연결되지 않아 이번 변경의 컴파일/Play Mode 검증은 미실행이다. 아래 기존 실행 기록의 타구 속도는 배율 추가 전 값이다.
+
+재검증: 같은 자세·시각으로 P/Space/R을 반복해 ExitVelocity 크기 / Lerp(MinExitSpeed, MaxExitSpeed, ContactQuality)가 1.2~2.0인지 확인한다. 스윙마다 속력이 달라져도 접촉 여부·타이밍·네 평가값은 같아야 한다. R 후 HasSwung/HasContact=false, 속력 0인지 확인한다. 기존 Verify Batting Evaluation 메뉴로 회귀 검증한다. 외야 경계 이탈의 기대 결과는 OutOfPlay이며 홈런 판정은 없다.
 ### 12.4 타자 네 항목 평가 검증 (2026-09-18)
 
 최신 기준은 `batting-evaluation.md`다. 원본 프로젝트 Unity 6000.5.2f1에서 컴파일 후 Play Mode에 진입해 일시 정지하고, `BattingEvaluationVerification.Run()`으로 실제 Rigidbody 물리를 0.02초씩 진행했다. 물리 모드와 수동 입력 옵션은 finally에서 복구했고 검증 후 Play Mode를 종료했다. 테스트 도구를 저장해 동일 절차를 Editor 메뉴로 반복할 수 있다.
