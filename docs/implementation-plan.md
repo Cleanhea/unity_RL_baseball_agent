@@ -1,5 +1,88 @@
 # 기본 야구 환경 구현 계획
 
+## 셀프플레이 준비와 고정 상대 평가 (2026-09-27)
+
+사용자 요청으로 셀프플레이 적용 전에 필요한 항목을 추천 순서대로 구현했다. 기준은 [고정 상대 평가](training-curriculum.md#고정-상대-평가-2026-09-27)와 [동시 학습과 셀프플레이](training-curriculum.md#동시-학습과-셀프플레이)다.
+
+1. **고정 상대 평가:** 2·3단계 새 타석의 10%는 기준 스크립트 투수(`BenchmarkPitcher`), 10%는 1단계 타자 모델(`Models/BenchmarkBatter_Stage1.onnx`, 추론 전용)이 상대한다. 성적은 `Benchmark Batter/`·`Benchmark Pitcher/`에 따로 기록한다. 일반 지표는 Agent끼리 대결한 타석만 넣는다.
+2. **승패 지표:** ML-Agents `Self-play/ELO`는 마지막 단계 보상의 부호를 쓰므로 투구 보상이 섞인다. 그래서 타석 결과 보상의 부호로 `Matchup/*`을 기록한다. 궤적 구조와 관측·행동·보상은 바꾸지 않았다.
+3. **스텝 비율:** 2단계 학습 기록에서 잰 결정 비율(타자 투구당 약 23, 투수 1)로 셀프플레이 교대 주기와 `max_steps`를 환산했다.
+4. **3단계:** 셀프플레이는 타자·투수에만 넣고 주자·수비는 계속 학습한다.
+5. **설정·자동화:** `Training/config/*_selfplay.yaml`, `auto_curriculum.py --self-play`, 별도 run-id.
+
+## TensorBoard 야구 지표 (2026-09-27)
+
+`TrainingStats`를 추가했다. 학습 중 투구 판정·스윙/컨택·타구·구종·타석 결과·3단계 플레이 결과가 ML-Agents `StatsRecorder`를 거쳐 TensorBoard에 기록된다. `TrainingEnvController`가 투구 종료·중단 때 호출하며, 보상·관측·행동 계약은 바꾸지 않았다. 지표 목록은 [TensorBoard 지표](training-curriculum.md#tensorboard-지표)에 있다.
+
+## 학습 단계 자동 전환 (2026-09-27)
+
+`Training/auto_curriculum.py`가 단계별 독립 실행 파일을 만들고, 각 단계의 모든 Behavior가 `max_steps`에 도달했는지 최종 모델·체크포인트·TensorBoard 기록으로 확인한 뒤 다음 학습을 시작하도록 추가했다. 이미 실행 중인 1단계에 붙는 모드도 있다. 자동 실행은 보상 점수와 무관하며, 실패 시 후속 단계를 시작하지 않는다. 실제 빌드·학습 연결의 확인 결과는 [검증 기록](verification.md)에 남긴다.
+
+## 학습 커리큘럼 1~3단계 구성 (2026-09-26)
+
+사용자 요청으로 세 단계 학습 씬을 차례로 구현·검증했다. 기준은 [training-curriculum.md](training-curriculum.md)다.
+
+- **1단계:** 스크립트 투수(존 중앙, 구속 무작위)와 `TrainingEnvController`
+- **2단계:** 구종 물리와 `PitcherAgent`·`PitcherRewardTracker`
+- **3단계:** 아래 단계 5·6의 일부를 학습용으로 구현했다.
+  - 수비 5명 이동·포구·송구와 공 소유
+  - 1루 포스·태그·뜬공 아웃과 `RunnerSafe` 판정
+  - `RunnerAgent`·`FielderAgent`(그룹)·`PlayOutcomeRewards`
+  - 단계 5의 원래 계획(자동 수비 스크립트)은 수비 Agent와 검증용 스크립트 수비로 대신했다.
+
+같은 날 후속 요청으로 남은 네 가지를 구현·검증했다.
+
+- 구종 변화량을 MLB 우투수 평균에 보정
+- 볼카운트와 타석 단위 에피소드
+- 주자 여러 명(누상 주자 3명, 포스·태그·리터치·이닝 상황)
+- 타자 출루·아웃 결과 보상
+
+기준은 [상황 규칙](game-situation.md)이다. 남은 일: Python 학습 실행과 성능 확인, 포수·2루수·도루.
+
+## 타자 Agent·센서 연결 (2026-09-24)
+
+`com.unity.ml-agents` 4.0.3, `BatterAgent`, 16값 벡터 관측, 투구 전 자세·투구 중 스윙 행동, 보상/종료 연결을 추가했다. 2026-09-26 후속 요청으로 다음을 바꿨다.
+
+- Agent를 타자 루트로 옮겼다.
+- 공 정답 위치·속도를 관측에서 빼 벡터 관측을 10값으로 줄였다.
+- 머리 높이 레이 센서 `BallEye`로만 공을 보게 했다.
+- 0.38초 고정 스윙 휴리스틱을 중립 행동으로 바꿨다.
+
+씬 설정과 검증 절차는 `batter-agent.md`를 따른다. 학습 YAML·Python trainer·학습 모델 및 성능 검증은 후속 단계다.
+
+## 타자 보상 설계 초안 (2026-09-24)
+
+사용자 요청의 여섯 보상 조건에 대한 초기 가중치·지급 시점·중복 방지·검증 예시를 `batter-reward-design.md`에 정하고, `BatterRewardTracker`와 `BatterRewardVerification`을 추가했다. 환경 결과를 바꾸지 않고 `PlayDirector` 이벤트를 읽어 한 투구의 보상 증분과 성분별 합계를 제공한다. Agent 연결은 위 최신 절에 기록했고 학습은 후속 단계다. 첫 학습은 고정 투구·고정 파워 조건으로 시작하고, 보상 성분을 관찰한 뒤 조건을 넓힌다.
+
+## 최신 진행 — 볼/스트라이크 판정 (2026-09-24)
+
+사용자 요청으로 투구별 볼/스트라이크 판정을 구현했다. 규칙 존(`StrikeZone`), 투구 위치 방식(기본 머신 목표, 무작위, 명령 지정), `PitchCall` 판정·이벤트·스냅샷, 시드 초기화, HUD 존 패널, 존/플레이트 표시 정렬 메뉴, `PitchCallVerification` 검증 메뉴를 추가했다. 설정의 표시 전용 `Strike Zone Half Width/Height`는 규칙 존 `Strike Zone Bottom/Top`으로 바꿨다(설정 에셋에 저장된 값이 없어 이전 값 손실은 없다). 검증 기록은 `verification.md` 12.7이다.
+
+남은 작업: 볼카운트·삼진·볼넷(타석 단위 진행), 공을 보고 손·배트 위치를 조정하는 타자 동작, 몸에 맞는 공·파울팁. 원본 씬의 3D 존 틀은 사용자가 정렬 메뉴를 실행해야 규칙 존과 맞는다.
+
+## 2026-09-23 타구 판정·물리 확장 완료 범위
+
+직구/타구 공기력, 지면 반발·마찰·구름 저항, 외야 충돌 펜스, 첫 닿음/베이스 통과 기반 페어·파울, 홈런·인정 2루타 결과, 설정 시드로 재현 가능한 스윙 파워 배율을 구현했다. 원본 씬에 주자와 펜스를 저장했다. `BattedBallVerification`의 실제 Rigidbody 검증과 기존 주루·타격 회귀 검증을 통과했다. 아래의 이전 단계별 미구현 목록 중 파울·홈런·공기역학·펜스 항목은 이 기록으로 대체한다. 남은 단계는 수비·아웃/세이프·송구 및 홈런·인정 2루타의 자동 베이스 수여다.
+
+## 최신 진행 — 주루 (2026-09-23)
+
+사용자 요청으로 **단계 4 단일 주자 이동을 부분 구현**했다. 달리기는 환경이 제공하고, 타자주자는 1루 이후 진루/귀루만 판단한다. 판단 주체(에이전트)는 넣지 않았고, 나중에 `RequestRunnerDecision`에 연결할 수 있게 명령·스냅샷·이벤트 경계만 만들었다. 규칙은 `environment-spec.md` 최신 주루 절을 따른다.
+
+| 경로 | 내용 |
+| --- | --- |
+| `Scripts/World/RunnerController.cs` | 신규. 경로 이동, 진루/귀루 적용, 베이스 밟음 시각 보간, `BaseReached` 사실 보고 |
+| `Scripts/Core/SimulationContracts.cs` | `RunnerPhase`, `RunnerDecision`, `RunnerSnapshot`, `PitchEndReason.RunScored` 및 타구 판정 계약 |
+| `Scripts/Core/PlayDirector.cs` | 선택 참조 `runner`, `RequestRunnerDecision`, `GetRunnerSnapshot`, `RunnerBaseReached`, 접촉 시 주자 전환, 득점 종료, 타구 판정 연계 |
+| `Scripts/World/BatterController.cs` | `SetVisible` — 접촉 때 숨기고 초기화 때 다시 표시 |
+| `Scripts/Settings/BaseballEnvironmentConfig.cs` | `Runner Speed` 7 m/s, `Runner Arrival Radius` 0.30 m와 검증 |
+| `Scripts/Input/ManualPlayController.cs`, `Scripts/Presentation/DebugPresenter.cs` | F 진루 / B 귀루, HUD 주자 표시 |
+| `Scripts/Editor/RunnerSceneSetup.cs`, `BatterSceneSetup.cs`, `BaseballPlaygroundBuilder.cs` | 씬에 `BatterRunner` 추가·Director 연결 메뉴, 빌더에서 호출 |
+| `Scripts/Editor/RunnerVerification.cs` | 신규. 일시 정지한 Play Mode용 주루 검증 메뉴 |
+
+**원본 씬에 주자와 외야 펜스를 저장했다.** 주자를 다시 만들 필요 없이 `BaseballPlayground`를 열어 사용할 수 있다.
+
+남은 작업: 수비·포구·송구(단계 5), 아웃/세이프·포스 판정(단계 6; 파울 판정은 2026-09-23 구현), 홈런·인정 2루타의 진루권 수여, 판단 에이전트와 그 관측·보상 정의(학습 단계). 기존 단계 4 계획의 "1루 도착 시 `SafeAtFirst` 종료"는 판단을 받기 위해 적용하지 않았고, 수비가 생기면 다시 정한다.
+
 ## 최신 진행 — 2026-09-18
 
 후속 요청으로 다음 우선순위를 주루보다 **타자 학습용 제어·평가**로 변경했다. 몸 위치와 상대 배트 위치를 독립 명령으로 제공하고, 실제 스윙 각도·타이밍을 포함해 네 항목의 원시 오차/점수를 제공한다. 환경 측 구현과 반복 검증을 완료한 뒤 ML-Agents 어댑터/에피소드 초기 분포/보상 정의를 후속 작업으로 둔다. 자세의 기준과 API는 `batting-evaluation.md`를 따른다. 기존 단계 4~7은 보류 상태이며 삭제하지 않는다.
@@ -203,7 +286,7 @@
 
 ## 5. 단계 4 — 단일 주자 이동
 
-**상태:** 계획됨
+**상태:** 부분 구현 (2026-09-23). 이동·진루/귀루 판단·득점 종료·초기화 구현. 1루 도착 `SafeAtFirst` 종료는 적용하지 않았다(맨 위 최신 진행 참고).
 
 **목적:** 유효 타격 후 타자주자 1명이 베이스 순서에 따라 이동하고 목표·도착 상태를 제공한다.
 
@@ -376,7 +459,7 @@
 | 공중 포구, 1루 세이프/포스, 득점 시나리오 | 태그 아웃, 병살, 인필드 플라이, 전체 야구 규칙 |
 | Miss/Foul/OutOfPlay/DeadBall/Timeout | 볼카운트, 삼진, 볼넷, 홈런, 이닝/팀 운영 |
 | 수동·스크립트 입력과 디버그 HUD | 운영 UI, 멀티플레이, 관중·중계 |
-| 환경 명령·스냅샷·이벤트·초기화 | ML-Agents, 관측/행동 공간, 보상, 학습 |
+| 환경 명령·스냅샷·이벤트·초기화, 타자 Agent·보상·관측·행동 | 주루/수비 Agent, 학습 설정·실행 |
 
 ## 10. 다음 구현 작업
 

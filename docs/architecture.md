@@ -1,5 +1,62 @@
 # 기본 야구 환경 아키텍처
 
+## 최신 연결 — 학습 단계 컨트롤러와 수비 (2026-09-26)
+
+[학습 단계](training-curriculum.md) 구현으로 책임이 다음처럼 나뉜다.
+
+`Training/auto_curriculum.py`는 Unity 외부에서 단계별 실행 파일 빌드·ML-Agents 학습기 실행·완료 확인·다음 단계 시작을 맡는다. 빌드는 `Training/UnityBuild/Editor/CurriculumPlayerBuild.cs`를 원본과 분리된 임시 Unity 프로젝트에 복사해 수행한다. 원본 Editor의 학습 씬과 `TrainingEnvController`는 자기 단계의 에피소드만 담당한다.
+
+| 구성요소 | 책임 | 소유하지 않는 것 |
+| --- | --- | --- |
+| `TrainingEnvController` (씬마다 하나, `Systems/`) | 단계별 결정 요청(`Academy.AgentPreStep`), 1단계 스크립트 투구, 투구·타석 종료 판단과 초기화 요청, 타석 결과 보상, 수비·주자 그룹(`SimpleMultiAgentGroup`), 새 타석 무작위 상황, 2단계부터 고정 상대 평가 타석 선택(기준 투수 투구, 타석 사이 타자 정책의 모델 추론 전환·복원) | 경기 규칙·물리·판정·카운트 |
+| `BenchmarkPitcher` (정적) | 평가 타석의 고정 구종 비율·구속·위치 분포 → `PitchCommand` | 투구 물리·판정 |
+| `GameSituation` (Director 소유) | 볼카운트·아웃·베이스 점유·득점, 볼넷·삼진·반 이닝, 플레이 결과 반영 | 물리·Agent |
+| `PlayDirector` | 기존 역할 전체와 새 명령(`RequestThrowPitch(PitchCommand)`, `RequestFielderMove/Throw`, `RequestScriptedBattedBall`), 포구·송구·포스/태그 아웃·`RunnerSafe` 판정 | Agent·보상 |
+| `PitchPhysics` (정적) | 구종 회전 벡터, 휘는 공 2축 조준 해석기, 통과점 적분 | |
+| `FielderController` (수비수 루트) | 이동 명령을 속력·가속 한도로 적분, 글러브 위치 | 포구·아웃 판정 |
+| `BallController` | 기존 역할과 수비수 소유(`Hold`/`MoveHeld`/`Throw`, `HolderIndex`) | |
+| `BatterAgent`·`PitcherAgent`·`RunnerAgent`·`FielderAgent` (각 선수 루트) | 관측과 행동 → `PlayDirector` 명령 | 결정 시점(컨트롤러가 정함) |
+| `BatterRewardTracker`·`PitcherRewardTracker`·`PlayOutcomeRewards` | 투구 단위 보상, 3단계 결과 보상 | 판정 |
+| `TrainingStats` (컨트롤러 소유) | 투구·타석·플레이가 끝날 때 `PlayDirector`·Agent 읽기 전용 값으로 TensorBoard 지표를 만들어 ML-Agents `StatsRecorder`로 보냄(학습기 연결 시에만). 평가 타석은 `Benchmark` 묶음, Agent끼리 대결한 타석은 일반 지표와 `Matchup` | 보상·관측·판정 |
+
+- Agent는 Decision Requester 없이 컨트롤러의 `RequestDecision()`/`RequestAction()`으로만 결정한다.
+- 명령은 모두 `PlayDirector` 버퍼에 쌓였다가 `FixedUpdate`에서 적용된다. 수동·스크립트·Agent가 같은 경계를 쓴다.
+- 수비수 배열이 비어 있으면 3단계 규칙은 실행되지 않는다. 그래서 수동 씬·1·2단계 동작은 이전과 같다.
+- 타구 시작은 실제 접촉과 시나리오 타구가 같은 `StartBattedBall`을 쓴다.
+
+## 최신 연결 — 타자 ML-Agents Agent (2026-09-24)
+
+`BatterAgent`는 `CollectObservations`에서 `PlayDirector.GetSnapshot()`과 `GetBattingEvaluation()`을 읽어 타자 상태와 볼카운트·아웃·주자 16값 벡터 센서를 채운다. 공은 자식 `BallEye`의 `RayPerceptionSensorComponent3D`가 `Ball` 태그로 감지하며, 이 센서는 `Use Child Sensors`로 수집된다. 공 정답 위치·속도는 Agent 관측에 넣지 않는다(2026-09-26). 스냅샷의 공 값은 판정·디버그·검증용으로 그대로 제공한다. `OnActionReceived`는 투구 전 자세 명령, 투구 요청, 투구 중 스윙 명령만 Director에 전달한다. `PlayReset` 후 보상 수집을 시작하고 `BatterRewardTracker`의 증분/완료 이벤트를 `AddReward`/`EndEpisode`로 전달한다. 씬의 `BehaviorParameters`와 `DecisionRequester`는 [타자 Agent 계약](batter-agent.md)에 맞춘다. 기존 수동 입력과 자동 반복은 Agent가 활성화된 동안 꺼 둔다.
+
+배치(2026-09-26): Agent와 두 ML-Agents 컴포넌트는 `BatterController`가 있는 타자 루트 오브젝트에 둔다. 자식 센서가 선수 몸을 따라 수집되게 하려는 것이며, 향후 투수·수비 Agent도 각 선수 루트에 둔다. 같은 오브젝트에 있어도 소유권은 바뀌지 않는다. Agent는 `PlayDirector` 명령·스냅샷만 사용하고 `BatterController`를 직접 호출하지 않는다. Director의 초기화 요청과 입력 전환은 플래그/직렬화 필드라 Agent와 Director의 `Awake`/`OnEnable` 순서에 의존하지 않는다.
+
+## 타자 보상 계산기 (2026-09-24)
+
+`BatterRewardTracker`는 `PlayDirector` 밖에서 `BallBatContact`, `BattedBallCalled`, `PitchCalled`를 구독한다. Agent가 `PlayReset` 뒤 `BeginEpisode()`로 한 투구의 보상 상태를 시작하고, 계산기는 `RewardAdded(float)`와 `EpisodeCompleted(BatterRewardSnapshot)`을 발행한다. `Dispose()`로 구독을 해제한다. 경기 결과와 타자 평가 점수의 소유권은 그대로 Director와 BatterController에 있고, 보상 계산기는 이를 읽기만 한다. 가중치·판정별 지급 규칙은 `batter-reward-design.md`를 따른다.
+
+## 최신 연결 — 볼/스트라이크 판정 (2026-09-24)
+
+`Scripts/Core/StrikeZone.cs`는 규칙 존 기하(오각형 플레이트, 플레이트 좌표 변환, 공-존 교차)만 가진 순수 정적 클래스다. `PlayDirector`가 투구 위치 결정(설정 방식 또는 `RequestThrowPitch(Vector2)`), 환경 전용 투구 위치 난수원, 매 고정 단계의 존 통과·플레이트 통과 위치 기록, `PitchCall` 확정을 맡는다. 치지 못한 공은 투구 종료 때, 맞힌 공은 `BattedBallJudge` 판정 때 정한다. 조회는 `GetPitchCall()`의 `PitchCallSnapshot`, 이벤트는 `PitchCalled(PitchCall)`이다. `RequestResetPlay(int seed)`는 투구 위치(시드+1)와 스윙 파워(시드) 난수원을 다시 만든다. `DebugPresenter`는 스냅샷만 읽어 포수 시점 존 패널을 그린다.
+
+`StrikeZoneSceneSetup`(Editor)은 3D 존 틀과 홈플레이트 표시를 규칙 존 위치로 옮기는 메뉴이며 빌더도 같은 배치를 쓴다. 판정은 씬 표시 객체를 읽지 않는다.
+
+## 최신 연결 — 타구 물리와 판정 (2026-09-23)
+
+`BallController`가 Rigidbody 속도·회전, 공기력, 지면/펜스 접촉 기록을 소유한다. `PlayDirector`는 `TrySolvePitch`로 고정 단계 적분에 맞춘 투구 속도와 회전을 계산하고, 접촉 때 타구 초기 속도·회전을 공에 전달한다. `BattedBallJudge`는 이전/현재 공 위치와 첫 닿음 사실로 페어·파울·홈런·인정 2루타를 판단한다. Director만 `PitchEndReason`을 확정하고 `BattedBallCalled`를 발행한다. 판정 조회는 `GetBattedBallSnapshot()`이며 HUD는 이 스냅샷을 읽는다.
+
+`FenceSceneSetup`이 Editor에서 96개 충돌 펜스를 `Field/OutfieldFence`에 연결하고, `BaseballPlaygroundBuilder`도 이를 호출한다. 원본 씬에도 펜스를 저장했다. 설정값은 `BaseballEnvironmentConfig`에 있으며 공기력 켜기/끄기, 항력·회전, 지면 반발·마찰·구름 저항, 펜스 높이, 시드와 스윙 파워 범위를 조절한다. 수비나 주자 자동 수여는 이 연결에 포함되지 않는다.
+
+## 최신 구현 변경 — 주루 (2026-09-23)
+
+`Scripts/World/RunnerController.cs`가 타자주자 한 명의 경로 이동, 진루/귀루 판단 적용, 베이스를 밟은 사실 보고를 맡는다. 아웃/세이프와 플레이 결과는 판단하지 않는다. `PlayDirector`는 Inspector의 선택 참조 `runner`를 가지며, 시작할 때 설정과 `FieldLayout`을 전달한다. 참조가 없으면 주루 없이 기존 동작을 유지한다. 규칙은 `environment-spec.md`의 최신 주루 절을 따른다.
+
+- 명령: `RequestRunnerDecision(RunnerDecision)`. 4.1의 `SetRunnerTarget(BaseId)` 계획은 사용자 요청에 따라 진루/귀루 두 판단으로 대체했다. 다음 FixedUpdate에서 이전 물리 구간 관찰 → 자세 → 투구 → 스윙 → 주루 판단 순서로 적용하며, 같은 틱의 초기화가 판단을 취소한다.
+- 진행: 접촉한 틱에 Director가 `runner.Begin(타자 위치)`와 `batter.SetVisible(false)`를 호출한다. 이후 `BattedBallInFlight`의 각 고정 단계는 타자 Tick → 주자 Tick → 득점/장외/시간 초과 확인 순서다. 주자는 Rigidbody·Collider 없이 Transform만 옮긴다.
+- 조회와 이벤트: `GetRunnerSnapshot()`은 읽기 전용 `RunnerSnapshot`을 돌려준다. `RunnerController.BaseReached`를 Director가 `RunnerBaseReached(BaseId)`로 다시 발행한다. 홈 도착은 `PitchEndReason.RunScored`로 기록한다. 타구 판정 조회와 이벤트는 위 최신 연결을 따른다. 이벤트 처리기에서는 명령만 요청한다.
+- 향후 학습 연결: 에이전트는 수동·스크립트 입력과 나란한 입력원으로서 이벤트나 스냅샷을 읽고 `RequestRunnerDecision`만 호출하면 된다. RunnerController를 ML-Agents 타입으로 바꾸지 않으며, 관측·행동 공간·보상은 아직 정하지 않았다.
+- 씬 연결: `Tools > Baseball Simulation > Add Batter-Runner To Current Scene`(`RunnerSceneSetup`)이 `Actors` 아래에 `BatterRunner`를 만들고 Director 참조를 연결한다. 표시는 Collider 없는 Capsule/Sphere이며 기본 비활성이다. 이미 연결돼 있으면 새로 만들지 않는다. `BaseballPlaygroundBuilder`도 이 함수를 호출한다.
+- 검증 도구: `Tools > Baseball Simulation > Verify Runner (Paused Play Mode)`(`RunnerVerification`).
+
 ## 최신 구현 변경 — 2026-09-18
 
 네 항목 평가 확장: `BatterSetupCommand`(타자 X/Z·상대 손잡이 X/Y/Z), `BattingEvaluation` 읽기 전용 값 타입, `RequestBatterSetup`/`GetBattingEvaluation`/`BattingEvaluated`를 추가했다. Director는 이전 물리 구간 관찰 → Ready 자세 명령 → 투구 → 스윙 순서로 실행하고 초기화는 모두 취소한다. 발사한 틱의 시간을 미리 더하던 1틱 오차를 제거했다. 초기화는 타자/배트 자세도 복원한다. 입력 소스는 ManualInputEnabled로 구분한다. 상세 책임과 평가 정의는 `batting-evaluation.md`를 따른다.
@@ -26,7 +83,7 @@ BatterController는 목표 고정 손잡이를 제거하고 몸 위치에 상대
 - 빌드에 포함된 `SampleScene`에는 카메라, 조명, Global Volume만 있다.
 - 야구 전용 스크립트·프리팹·설정 데이터는 없다.
 - `Temp.cs`는 빈 템플릿이라 재사용할 기능이 없다.
-- ML-Agents는 설치 선언되어 있지 않으며 현재 설치하지 않는다.
+- 2026-09-11 당시 ML-Agents 설치 선언은 없었다. 타자 Agent 연결로 2026-09-24에 4.0.3을 추가했다.
 - 에셋은 텍스트 직렬화되지만 씬·프리팹 변경은 Unity Editor를 우선해 참조와 GUID를 보호한다.
 
 ## 2. 제안 폴더
@@ -173,7 +230,7 @@ HUD는 매 프레임 최신 스냅샷을 표시할 수 있다. 스크립트 검�
 
 이벤트 데이터는 변경 불가능한 값으로 만들고 시뮬레이션 시각, 고정 틱, 사건 순번을 포함한다. 이벤트 버스 패키지나 범용 메시징 프레임워크는 필요하지 않다. C# 이벤트 또는 Director의 작은 구독 API면 충분하다.
 
-환경 이벤트는 보상이 아니다. 향후 학습 어댑터가 별도 정책으로 이벤트를 보상에 매핑할 수 있지만 그 코드는 현재 만들지 않는다.
+환경 이벤트 자체는 보상이 아니다. `BatterRewardTracker`가 타자 관련 환경 이벤트를 별도 정책으로 보상에 매핑하고 `BatterAgent`가 이를 학습 보상으로 전달한다.
 
 ## 5. 물리와 상태 갱신 흐름
 
@@ -247,7 +304,7 @@ Director는 시작 시 각 재사용 객체의 초기 Transform, 활성 상태, 
 - 환경 이벤트를 구독해 별도 보상 정책을 적용한다.
 - 에피소드 시작/종료 때 기존 초기화와 결과를 사용한다.
 
-BallController, RunnerController, FielderController를 ML-Agents 타입으로 바꾸지 않는다. 학습 어댑터는 수동·스크립트 컨트롤러와 나란한 입력원이다. 현재는 해당 어댑터, `Agent`, `BehaviorParameters`, 관측 벡터, 행동 공간, 보상 코드를 만들지 않는다.
+BallController, RunnerController, FielderController를 ML-Agents 타입으로 바꾸지 않는다. `BatterAgent`는 수동·스크립트 컨트롤러와 같은 환경 명령을 사용하는 입력원이다. 타자 관측·행동과 보상 연결은 구현했으며 주루·수비 Agent와 학습 실행은 아직 없다.
 
 ## 10. 아키텍처 완료 확인
 

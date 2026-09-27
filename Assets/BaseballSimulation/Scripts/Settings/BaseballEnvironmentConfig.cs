@@ -87,18 +87,23 @@ namespace BaseballSimulation
         [SerializeField, Min(0f)]
         private float behindTargetMargin = 3f;
 
-        [Header("스트라이크존 표시 (간이 검증용 가정)")]
-        [Tooltip(
-            "PitchTarget 기준 좌우 절반 폭(m). 표시 전용이며 볼/스트라이크 판정에는 쓰지 않는다. " +
-            "기본값은 홈 플레이트 폭(약 0.43 m)의 절반이다.")]
-        [SerializeField, Min(0.05f)]
-        private float strikeZoneHalfWidth = 0.215f;
+        [Header("스트라이크존 (규칙 판정)")]
+        [Tooltip("존 아래 높이(m, 지면 기준). 규칙상 무릎 아래 오목한 곳. 기본값은 Statcast 리그 평균 약 1.57 ft.")]
+        [SerializeField, Min(0f)]
+        private float strikeZoneBottom = 0.48f;
 
-        [Tooltip(
-            "PitchTarget 기준 상하 절반 높이(m). 표시 전용이며 볼/스트라이크 판정에는 쓰지 않는다. " +
-            "기본값은 검증 편의를 위한 가정으로 실제 타자 신장에 따른 존 산정 규칙을 따르지 않는다.")]
-        [SerializeField, Min(0.05f)]
-        private float strikeZoneHalfHeight = 0.30f;
+        [Tooltip("존 위 높이(m, 지면 기준). 규칙상 어깨 윗부분과 바지 윗선의 중간. 기본값은 Statcast 리그 평균 약 3.37 ft.")]
+        [SerializeField, Min(0.1f)]
+        private float strikeZoneTop = 1.03f;
+
+        [Header("투구 위치")]
+        [Tooltip("MachineTarget: 항상 PitchTarget으로 던진다(피칭머신). RandomAroundZone: 존 중심 둘레 정규분포.")]
+        [SerializeField]
+        private PitchLocationMode pitchLocationMode = PitchLocationMode.MachineTarget;
+
+        [Tooltip("RandomAroundZone의 좌우/높이 표준편차(m). 0.28 m면 존 통과율이 MLB와 비슷한 약 46%다.")]
+        [SerializeField]
+        private Vector2 pitchLocationSpread = new Vector2(0.28f, 0.28f);
 
         [Header("Scene 뷰 디버그 표시")]
         [Tooltip("아래 개별 표시의 상위 스위치.")]
@@ -163,6 +168,118 @@ namespace BaseballSimulation
         public Vector2 ReferenceSwingAngles => referenceSwingAngles;
         public float SwingAngleErrorScale => swingAngleErrorScale;
 
+        [Header("주루 (m/s, m)")]
+        [Tooltip("타자주자 이동 속력(m/s). 가속 없이 일정하다.")]
+        [SerializeField, Min(0.1f)] private float runnerSpeed = 7f;
+        [Tooltip("베이스 중심에서 이 거리 안에 들어오면 베이스를 밟은 것으로 본다(m).")]
+        [SerializeField, Min(0.01f)] private float runnerArrivalRadius = 0.3f;
+        public float RunnerSpeed => runnerSpeed;
+        public float RunnerArrivalRadius => runnerArrivalRadius;
+
+        [Header("수비 (3단계, m/s, m)")]
+        [Tooltip("수비수 최고 이동 속력(m/s).")]
+        [SerializeField, Min(0.1f)] private float fielderSpeed = 7.5f;
+        [Tooltip("수비수 가속도(m/s²). 방향 전환도 이 한도 안에서 한다.")]
+        [SerializeField, Min(0.1f)] private float fielderAcceleration = 15f;
+        [Tooltip("공이 수비수 몸 중심 축에서 이 수평 거리 안으로 지나면 잡는다(m).")]
+        [SerializeField, Min(0.05f)] private float catchRadius = 1.0f;
+        [Tooltip("잡을 수 있는 공의 최고 높이(m, 지면 기준).")]
+        [SerializeField, Min(0.1f)] private float catchReachHeight = 2.4f;
+        [Tooltip("송구 속력(m/s).")]
+        [SerializeField, Min(1f)] private float throwSpeed = 30f;
+        [Tooltip("공을 가진 수비수가 베이스 중심에서 이 거리 안에 있으면 베이스를 밟은 것으로 본다(m).")]
+        [SerializeField, Min(0.05f)] private float baseCoverRadius = 0.6f;
+        [Tooltip("공을 가진 수비수와 베이스를 벗어난 주자의 거리가 이 값 안이면 태그 아웃이다(m).")]
+        [SerializeField, Min(0.05f)] private float tagRadius = 0.8f;
+        [Tooltip("모든 살아 있는 주자가 베이스에 멈추고 수비가 공을 가진 상태가 이 시간(s) 이어지면 플레이가 죽는다. " +
+            "그 사이 주자는 태그업·추가 진루를 시도할 수 있다.")]
+        [SerializeField, Min(0f)] private float playDeadSeconds = 1f;
+        public float PlayDeadSeconds => playDeadSeconds;
+        public float FielderSpeed => fielderSpeed;
+        public float FielderAcceleration => fielderAcceleration;
+        public float CatchRadius => catchRadius;
+        public float CatchReachHeight => catchReachHeight;
+        public float ThrowSpeed => throwSpeed;
+        public float BaseCoverRadius => baseCoverRadius;
+        public float TagRadius => tagRadius;
+
+        [Header("타격 파워와 난수")]
+        [Tooltip("스윙마다 추첨하는 타구 속도 배율 최소/최대. 같은 값이면 배율이 고정된다(학습 재현성 권장).")]
+        [SerializeField] private Vector2 swingPowerMultiplierRange = new Vector2(1.2f, 2f);
+        [Tooltip("파워 배율 난수원의 시드. 같은 시드와 같은 스윙 순서면 같은 배율이 나온다.")]
+        [SerializeField] private int randomSeed = 12345;
+        public Vector2 SwingPowerMultiplierRange => swingPowerMultiplierRange;
+        public int RandomSeed => randomSeed;
+
+        [Header("공기 역학 (항력 + 역회전 양력, Statcast 비거리 기준 보정)")]
+        [Tooltip("끄면 진공 탄도(기존 동작)로 돌아간다.")]
+        [SerializeField] private bool aerodynamicsEnabled = true;
+        [Tooltip("공기 밀도(kg/m³). 해수면 약 20°C는 1.2, 고지대 구장은 더 낮다.")]
+        [SerializeField, Min(0.1f)] private float airDensity = 1.2f;
+        [Tooltip("항력 계수. 0.40은 역회전 모델과 함께 타구 비거리 기준값에 맞춘 값이다.")]
+        [SerializeField, Range(0.05f, 1f)] private float dragCoefficient = 0.4f;
+        [Tooltip("피칭머신 직구 역회전(rpm). MLB 포심 평균은 약 2300 rpm.")]
+        [SerializeField, Range(0f, 3500f)] private float pitchBackspinRpm = 2200f;
+        [Tooltip("타구 발사각 1°당 역회전(rpm). 음수 발사각은 전진 회전(탑스핀)이 된다.")]
+        [SerializeField, Range(0f, 200f)] private float battedBackspinRpmPerDegree = 70f;
+        [Tooltip("타구 회전 크기 상한(rpm).")]
+        [SerializeField, Range(0f, 5000f)] private float maxBattedSpinRpm = 2500f;
+        [Header("구종 (우투수 기준, 2단계 투수와 1단계 직구가 쓴다)")]
+        [Tooltip("구종별 구속 범위·회전수·휘는 방향·회전 효율. 다섯 구종이 모두 있어야 한다.")]
+        [SerializeField] private PitchTypeProfile[] pitchProfiles = DefaultPitchProfiles();
+        public PitchTypeProfile GetPitchProfile(PitchType type)
+        {
+            if (pitchProfiles != null)
+                foreach (PitchTypeProfile profile in pitchProfiles)
+                    if (profile.Type == type) return profile;
+            foreach (PitchTypeProfile profile in DefaultPitchProfiles())
+                if (profile.Type == type) return profile;
+            return default;
+        }
+
+        /// <summary>
+        /// 우투수 기본값. 휘는 방향은 포수 시점 위 0°, 팔 쪽(3루 쪽) 90°, 아래 180°, 글러브 쪽 270°다.
+        /// 방향·효율은 구속 범위 가운데에서 존 중앙으로 던질 때 회전 없는 공 대비 변화량이 MLB 우투수 평균
+        /// (포심 -18/+41, 투심 -38/+20, 커브 +23/-25, 슬라이더 +20/+2, 체인지업 -36/+18 cm; 좌우/상하)에 맞도록 보정했다.
+        /// 이 양력 근사와 투수판 기준 비행 거리에서는 효율이 실제 회전 효율보다 작게 나온다(docs/pitcher-agent.md).
+        /// </summary>
+        public static PitchTypeProfile[] DefaultPitchProfiles() => new[]
+        {
+            new PitchTypeProfile(PitchType.FourSeam, new Vector2(135f, 155f), 2300f, 22f, 0.42f),
+            new PitchTypeProfile(PitchType.TwoSeam, new Vector2(130f, 150f), 2150f, 62f, 0.40f),
+            new PitchTypeProfile(PitchType.Curve, new Vector2(110f, 130f), 2500f, 233f, 0.29f),
+            new PitchTypeProfile(PitchType.Slider, new Vector2(125f, 140f), 2400f, 276f, 0.22f),
+            new PitchTypeProfile(PitchType.Changeup, new Vector2(120f, 138f), 1750f, 63f, 0.42f),
+        };
+
+        public bool AerodynamicsEnabled => aerodynamicsEnabled;
+        public float AirDensity => airDensity;
+        public float DragCoefficient => dragCoefficient;
+        public float PitchBackspinRpm => pitchBackspinRpm;
+        public float BattedBackspinRpmPerDegree => battedBackspinRpmPerDegree;
+        public float MaxBattedSpinRpm => maxBattedSpinRpm;
+
+        [Header("지면·펜스")]
+        [Tooltip("공-지면/펜스 반발 계수. 천연 잔디 근사.")]
+        [SerializeField, Range(0f, 1f)] private float groundRestitution = 0.4f;
+        [Tooltip("공-지면/펜스 마찰 계수.")]
+        [SerializeField, Range(0f, 1.5f)] private float groundFriction = 0.5f;
+        [Tooltip("잔디 구름 저항 계수. 감속도 = 계수 × g. 0이면 구름 저항 없음.")]
+        [SerializeField, Range(0f, 1f)] private float rollingResistance = 0.25f;
+        [Tooltip("외야 펜스 높이(m). 펜스는 경기 경계 반경에 선다. MLB 일반 높이 8 ft = 2.44 m.")]
+        [SerializeField, Min(0.1f)] private float fenceHeight = 2.44f;
+        [Tooltip("공이 이 속력(m/s) 미만으로 정지 시간 동안 머물면 멈춘 것으로 본다.")]
+        [SerializeField, Min(0.001f)] private float ballStopSpeed = 0.15f;
+        [SerializeField, Min(0.02f)] private float ballStopSeconds = 1f;
+        /// <summary>외야 펜스 두께(m). 펜스 생성 메뉴와 홈런 판정이 같은 값을 쓴다.</summary>
+        public const float FenceThickness = 0.3f;
+        public float GroundRestitution => groundRestitution;
+        public float GroundFriction => groundFriction;
+        public float RollingResistance => rollingResistance;
+        public float FenceHeight => fenceHeight;
+        public float BallStopSpeed => ballStopSpeed;
+        public float BallStopSeconds => ballStopSeconds;
+
         public Vector3 HomePosition => homePosition;
         public Vector3 FirstBasePosition => firstBasePosition;
         public Vector3 SecondBasePosition => secondBasePosition;
@@ -181,8 +298,10 @@ namespace BaseballSimulation
         public float PitchTimeLimitSeconds => pitchTimeLimitSeconds;
         public float BehindTargetMargin => behindTargetMargin;
 
-        public float StrikeZoneHalfWidth => strikeZoneHalfWidth;
-        public float StrikeZoneHalfHeight => strikeZoneHalfHeight;
+        public float StrikeZoneBottom => strikeZoneBottom;
+        public float StrikeZoneTop => strikeZoneTop;
+        public PitchLocationMode PitchLocationMode => pitchLocationMode;
+        public Vector2 PitchLocationSpread => pitchLocationSpread;
 
         public bool DrawGizmos => drawGizmos;
         public bool DrawAxes => drawAxes;
@@ -233,6 +352,26 @@ namespace BaseballSimulation
                     problems.Add("타격 설정은 유한한 양수여야 한다.");
             if (minExitSpeed > maxExitSpeed || contactHalfWindow > swingDuration * 0.5f)
                 problems.Add("타격 속도 범위 또는 접촉 시간 폭이 잘못됐다.");
+            if (!IsFinite(runnerSpeed) || runnerSpeed <= 0f || !IsFinite(runnerArrivalRadius) || runnerArrivalRadius <= 0f)
+                problems.Add("주자 속력과 베이스 도착 반경은 유한한 양수여야 한다.");
+            foreach (float value in new[] { fielderSpeed, fielderAcceleration, catchRadius, catchReachHeight, throwSpeed, baseCoverRadius, tagRadius })
+                if (!IsFinite(value) || value <= 0f) { problems.Add("수비 속력·가속도·포구·송구·베이스·태그 값은 유한한 양수여야 한다."); break; }
+            if (!IsFinite(swingPowerMultiplierRange.x) || !IsFinite(swingPowerMultiplierRange.y) ||
+                swingPowerMultiplierRange.x <= 0f || swingPowerMultiplierRange.x > swingPowerMultiplierRange.y)
+                problems.Add("파워 배율 범위는 0 < 최소 <= 최대여야 한다.");
+            foreach (float value in new[] { airDensity, dragCoefficient, fenceHeight, ballStopSpeed, ballStopSeconds })
+                if (!IsFinite(value) || value <= 0f) problems.Add("공기 밀도·항력 계수·펜스 높이·정지 기준은 유한한 양수여야 한다.");
+            foreach (float value in new[] { pitchBackspinRpm, battedBackspinRpmPerDegree, maxBattedSpinRpm,
+                groundRestitution, groundFriction, rollingResistance })
+                if (!IsFinite(value) || value < 0f) problems.Add("회전·반발·마찰·구름 저항 값은 0 이상이어야 한다.");
+            foreach (PitchType type in (PitchType[])System.Enum.GetValues(typeof(PitchType)))
+            {
+                bool found = false;
+                if (pitchProfiles != null)
+                    foreach (PitchTypeProfile profile in pitchProfiles)
+                        if (profile.Type == type) { found = true; if (!profile.IsValid) problems.Add($"{type} 구종 설정이 잘못됐다(구속 0 < 최소 <= 최대, 회전수 0 이상, 효율 0~1)."); }
+                if (!found) problems.Add($"{type} 구종 설정이 없다.");
+            }
 
             if (playBoundaryHorizontalRadius <= 0f)
             {
@@ -305,14 +444,16 @@ namespace BaseballSimulation
                 problems.Add($"목표 뒤쪽 여유 거리는 0 이상이어야 한다. 현재 {behindTargetMargin} m.");
             }
 
-            if (strikeZoneHalfWidth <= 0f)
+            if (!IsFinite(strikeZoneBottom) || !IsFinite(strikeZoneTop) || strikeZoneBottom < 0f ||
+                strikeZoneTop <= strikeZoneBottom)
             {
-                problems.Add($"스트라이크존 절반 폭은 0보다 커야 한다. 현재 {strikeZoneHalfWidth} m.");
+                problems.Add($"스트라이크존은 0 <= 아래({strikeZoneBottom} m) < 위({strikeZoneTop} m)여야 한다.");
             }
 
-            if (strikeZoneHalfHeight <= 0f)
+            if (!IsFinite(pitchLocationSpread.x) || !IsFinite(pitchLocationSpread.y) ||
+                pitchLocationSpread.x < 0f || pitchLocationSpread.y < 0f)
             {
-                problems.Add($"스트라이크존 절반 높이는 0보다 커야 한다. 현재 {strikeZoneHalfHeight} m.");
+                problems.Add("투구 위치 표준편차는 0 이상의 유한한 값이어야 한다.");
             }
 
             AddIfOutsideBoundary(problems, "1루", firstBasePosition);
@@ -353,5 +494,39 @@ namespace BaseballSimulation
         }
 
         public static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
+    }
+
+    /// <summary>한 구종의 물리 기본값. 회전축은 휘는 방향과 회전 효율로 정한다(<see cref="PitchPhysics.SpinVector"/>).</summary>
+    [System.Serializable]
+    public struct PitchTypeProfile
+    {
+        [SerializeField] private PitchType type;
+        [Tooltip("구속 범위(km/h) 최소/최대. 투수 Agent의 구속 행동이 이 범위에 대응한다.")]
+        [SerializeField] private Vector2 speedRangeKmh;
+        [SerializeField, Min(0f)] private float spinRpm;
+        [Tooltip("마그누스 힘 방향(°). 포수 시점 위 0°, 팔 쪽(3루 쪽) 90°, 아래 180°, 글러브 쪽 270°.")]
+        [SerializeField] private float movementDegrees;
+        [Tooltip("회전 효율 0~1. 나머지 회전은 진행 방향과 나란한 자이로 회전이라 공을 휘게 하지 않는다.")]
+        [SerializeField, Range(0f, 1f)] private float spinEfficiency;
+
+        public PitchTypeProfile(PitchType type, Vector2 speedRangeKmh, float spinRpm, float movementDegrees, float spinEfficiency)
+        {
+            this.type = type;
+            this.speedRangeKmh = speedRangeKmh;
+            this.spinRpm = spinRpm;
+            this.movementDegrees = movementDegrees;
+            this.spinEfficiency = spinEfficiency;
+        }
+
+        public PitchType Type => type;
+        public Vector2 SpeedRangeKmh => speedRangeKmh;
+        public float MinSpeed => speedRangeKmh.x / 3.6f;
+        public float MaxSpeed => speedRangeKmh.y / 3.6f;
+        public float SpinRpm => spinRpm;
+        public float MovementDegrees => movementDegrees;
+        public float SpinEfficiency => spinEfficiency;
+        public bool IsValid => BaseballEnvironmentConfig.IsFinite(speedRangeKmh.x) && BaseballEnvironmentConfig.IsFinite(speedRangeKmh.y) &&
+            speedRangeKmh.x > 0f && speedRangeKmh.x <= speedRangeKmh.y && BaseballEnvironmentConfig.IsFinite(spinRpm) && spinRpm >= 0f &&
+            BaseballEnvironmentConfig.IsFinite(movementDegrees) && spinEfficiency >= 0f && spinEfficiency <= 1f;
     }
 }

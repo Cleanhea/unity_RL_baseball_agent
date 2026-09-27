@@ -1,0 +1,32 @@
+# Stage 1: batter only. Scene: Assets/BaseballSimulation/Scenes/Training/Stage1_Batter.unity
+# Scripted pitcher throws four-seamers (120-150 km/h) around the strike-zone center with the benchmark pitcher's
+# location spread (sd 0.25 m wide, 0.28 m high), so about half are balls and the batter learns to take them.
+# To keep the weights of an earlier stage 1 run, archive it and add --initialize-from=<archived run id>.
+# One episode = one plate appearance (strikeout, walk or ball in play).
+# Decisions: stance once per pitch, then every fixed step (0.02 s) while the pitch is in flight until the swing.
+# Values are a first-experiment starting point.
+behaviors:
+  BaseballBatter:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 256
+      buffer_size: 10240
+      learning_rate: 3.0e-4
+      beta: 5.0e-3
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: false
+      hidden_units: 256
+      num_layers: 2
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+    keep_checkpoints: 5
+    checkpoint_interval: 200000
+    max_steps: 3000000
+    time_horizon: 64
+    summary_freq: 20000

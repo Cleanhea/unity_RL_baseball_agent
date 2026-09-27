@@ -62,6 +62,11 @@ namespace BaseballSimulation
             }
             if (keyboard.spaceKey.wasPressedThisFrame)
                 playDirector.RequestSwing(new SwingCommand(sprayDegrees, launchDegrees));
+            if (playDirector.State == PlayState.BattedBallInFlight)
+            {
+                if (keyboard.fKey.wasPressedThisFrame) playDirector.RequestRunnerDecision(RunnerDecision.Advance);
+                if (keyboard.bKey.wasPressedThisFrame) playDirector.RequestRunnerDecision(RunnerDecision.Return);
+            }
 
             if (keyboard.pKey.wasPressedThisFrame)
             {

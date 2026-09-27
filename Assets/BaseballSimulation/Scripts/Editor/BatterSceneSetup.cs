@@ -37,7 +37,7 @@ namespace BaseballSimulation.Editor
             EditorSceneManager.MarkSceneDirty(root.scene);
         }
 
-        private static Transform Part(string name, Transform parent, PrimitiveType type,
+        internal static Transform Part(string name, Transform parent, PrimitiveType type,
             Vector3 position, Vector3 scale, Material material)
         {
             var part = GameObject.CreatePrimitive(type);

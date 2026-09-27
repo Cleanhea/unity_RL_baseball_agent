@@ -337,6 +337,8 @@ namespace BaseballSimulation.EditorTools
 
             Transform homeMarker = CreateBaseMarker(
                 "Home", field.transform, home, HomeVisualSize, materials.BaseMarker);
+            // 홈 기준점은 파울선이 만나는 플레이트 뒤 꼭짓점이다. 표시 판은 플레이트 위(투수 쪽)로 옮긴다.
+            homeMarker.Find("Visual").position += Vector3.forward * (StrikeZone.PlateDepth * 0.5f);
             Transform firstMarker = CreateBaseMarker(
                 "First", field.transform, config.FirstBasePosition, BaseVisualSize, materials.BaseMarker);
             Transform secondMarker = CreateBaseMarker(
@@ -356,10 +358,13 @@ namespace BaseballSimulation.EditorTools
                 field.transform, config.PitchOriginPosition, config.PitchTargetPosition,
                 materials.MachineBody, materials.MachineAccent);
 
-            // 스트라이크존 표시는 PitchTarget 자식으로 둬 목표 위치와 항상 같이 움직인다.
+            // 스트라이크존 표시는 PitchTarget 자식으로 둔다. 틀은 규칙 존(플레이트 앞 모서리 평면),
+            // 빨간 중앙 표시는 피칭머신 목표(PitchTarget)다. 판정은 표시가 아니라 StrikeZone이 한다.
+            BaseballSimulation.Editor.StrikeZoneSceneSetup.LayoutFrame(config, home, config.PitcherPlatePosition,
+                out Vector3 zoneCenter, out float zoneHalfWidth, out float zoneHalfHeight);
             CreateStrikeZoneVisual(
-                pitchTarget, config.PitchOriginPosition, config.PitchTargetPosition,
-                config.StrikeZoneHalfWidth, config.StrikeZoneHalfHeight,
+                pitchTarget, config.PitchOriginPosition, config.PitchTargetPosition, zoneCenter,
+                zoneHalfWidth, zoneHalfHeight,
                 materials.StrikeZoneFrame, materials.StrikeZoneCenter);
 
             CreatePlayBoundaryVisual(field.transform, home, boundaryRadius, materials.Boundary);
@@ -397,6 +402,8 @@ namespace BaseballSimulation.EditorTools
             systems.transform.SetParent(environmentRoot.transform, false);
             CreateSystems(systems.transform, fieldLayout, ball);
             BaseballSimulation.Editor.BatterSceneSetup.AddBatter();
+            BaseballSimulation.Editor.RunnerSceneSetup.AddRunner();
+            BaseballSimulation.Editor.FenceSceneSetup.AddFence();
         }
 
         private static BallController CreateBall(
@@ -485,7 +492,7 @@ namespace BaseballSimulation.EditorTools
         /// 표시 전용이며 Collider가 없어 공과 충돌하지 않는다(docs/environment-spec.md 2.2).
         /// </summary>
         private static void CreateStrikeZoneVisual(
-            Transform pitchTarget, Vector3 origin, Vector3 target,
+            Transform pitchTarget, Vector3 origin, Vector3 target, Vector3 frameCenter,
             float halfWidth, float halfHeight, Material frameMaterial, Material centerMaterial)
         {
             var group = new GameObject("StrikeZoneVisual");
@@ -503,16 +510,16 @@ namespace BaseballSimulation.EditorTools
             float t = StrikeZoneBarThickness;
 
             CreateBox(
-                "Top", group.transform, target + (rotation * new Vector3(0f, halfHeight, 0f)), rotation,
+                "Top", group.transform, frameCenter + (rotation * new Vector3(0f, halfHeight, 0f)), rotation,
                 new Vector3(width, t, t), frameMaterial);
             CreateBox(
-                "Bottom", group.transform, target + (rotation * new Vector3(0f, -halfHeight, 0f)), rotation,
+                "Bottom", group.transform, frameCenter + (rotation * new Vector3(0f, -halfHeight, 0f)), rotation,
                 new Vector3(width, t, t), frameMaterial);
             CreateBox(
-                "Left", group.transform, target + (rotation * new Vector3(-halfWidth, 0f, 0f)), rotation,
+                "Left", group.transform, frameCenter + (rotation * new Vector3(-halfWidth, 0f, 0f)), rotation,
                 new Vector3(t, height, t), frameMaterial);
             CreateBox(
-                "Right", group.transform, target + (rotation * new Vector3(halfWidth, 0f, 0f)), rotation,
+                "Right", group.transform, frameCenter + (rotation * new Vector3(halfWidth, 0f, 0f)), rotation,
                 new Vector3(t, height, t), frameMaterial);
             CreateBox(
                 "Center", group.transform, target, rotation,
@@ -925,8 +932,8 @@ namespace BaseballSimulation.EditorTools
                     "(기대 0.037 m / 0.145 kg)");
                 lines.Add($"기본 투구 속력: {config.PitchSpeed} m/s (기대 36 m/s)");
                 lines.Add(
-                    $"스트라이크존 절반 폭/높이: {config.StrikeZoneHalfWidth} m / {config.StrikeZoneHalfHeight} m " +
-                    "(간이 검증용 가정, docs/environment-spec.md 4장)");
+                    $"스트라이크존: 플레이트 폭 {StrikeZone.PlateWidth} m, 높이 {config.StrikeZoneBottom}~{config.StrikeZoneTop} m " +
+                    "(규칙 판정, docs/environment-spec.md 최신 볼/스트라이크 절)");
             }
 
             Vector3 origin = layout.PitchOriginPosition;

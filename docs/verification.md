@@ -1,6 +1,378 @@
 # Unity Editor 검증 절차
 
-### 스윙 파워 120~200% 변경 (2026-09-18)
+### 12.21 고정 상대 평가·승패 지표·셀프플레이 설정 검증 (2026-09-27)
+
+[고정 상대 평가](training-curriculum.md#고정-상대-평가-2026-09-27)와 [셀프플레이 설정](training-curriculum.md#동시-학습과-셀프플레이)을 확인했다. 원본 Editor는 건드리지 않았다. 격리 복사본(Unity 6000.5.2f1, 긴 경로) 배치 하네스로 확인했고, 학습기는 실제 mlagents 1.1.0으로 연결했다.
+
+- **배치 하네스(종료 코드 0):**
+  - 경기장 4개로 1~3단계 씬을 다시 만든 뒤 플레이그라운드 회귀 6종을 돌렸다.
+  - 단계마다 `MultiArenaVerification`·`BatterAgentVerification`·`TrainingStageVerification`을 돌렸다. 2·3단계는 새 `BenchmarkVerification`도 돌렸다. 모두 PASS다.
+  - 기존 검증은 시작할 때 평가 타석을 끄고, 진행 중인 평가 타석을 끝낸 뒤 진행한다(`BatterAgentVerification.DisableBenchmarks`).
+  - 로그의 예외는 복사본 PackageCache 경로 길이, App UI 네이티브 플러그인, 학습기 없는 gRPC 초기화에서 나온 것뿐이다.
+- **씬 반영:** 반영 전 백업과 비교했다. fileID를 무시한 블록 단위로, 단계마다 바뀐 블록은 `TrainingEnvController` 4개뿐이다. 새 필드 4개가 들어갔고, 2·3단계는 모델 GUID `32d22bce…`를 참조한다. 1단계는 모델이 비어 있다. 블록 수는 같다(5313/5377/5905). 플레이그라운드 씬은 바이트 단위로 같다.
+- **기준 투수 분포:** 표본 2만 개의 구종 비율은 포심 34.3%, 투심 17.0%, 슬라이더 23.5%, 체인지업 13.3%, 커브 11.9%로 목표와 ±1.5%p 안이다. 존 통과는 50.8%다. 모두 구종 구속 범위와 투수 Agent 위치 범위 안이다.
+- **기준 투수 타석(2·3단계):** 중립 타자로 삼진까지 6구를 던졌다. 구종이 섞였다.
+  - 그동안 투수 Agent는 타석·투구가 열리지 않았고 보상도 0이었다.
+  - 타자는 한 에피소드로 닫혔다.
+  - `Benchmark Batter` 지표는 투구마다·타석마다 한 번씩 기록됐다. 일반 지표(`Pitch Type`·`Plate Appearance`·`Matchup`)는 늘지 않았다.
+- **고정 타자 타석(2·3단계):**
+  - 타석 동안 타자 Behavior가 `InferenceOnly`와 벤치마크 모델로 바뀌었다.
+  - 중립 휴리스틱은 스윙하지 않는데 모델이 스윙했다. 2단계는 홈런(결과 +2.50), 3단계는 단타(+0.50)였다.
+  - 타석이 끝난 뒤 Behavior 종류·모델이 원래대로 돌아왔다.
+  - 투수는 이 타석을 한 에피소드로 닫았다. 지표는 `Benchmark Pitcher`에만 들어갔다.
+- **승패 지표:** 2단계 볼넷 → `Matchup/Batter Win` 1, 삼진 → `Pitcher Win` 1, 인플레이(결과 0) → `Draw` 1. 3단계 포스 아웃 → `Pitcher Win` 1, 단타 → `Batter Win` 1.
+- **설정 파싱:** `stage2_batter_pitcher_selfplay.yaml`·`stage3_full_team_selfplay.yaml`을 mlagents `RunOptions`로 읽었다. 타자·투수에만 `self_play`가 있고 값은 문서 표와 같다. `auto_curriculum.py --self-play`는 2·3단계 설정·run-id만 바꾼다.
+- **실행 파일 빌드:** `auto_curriculum.py --build-only`로 1~3단계를 다시 빌드했다(컴파일 오류 0). `Training/builds/`의 이전 실행 파일은 이 빌드로 바뀌었다.
+- **2단계 셀프플레이 실행 시험:** 스크래치 폴더 결과, 교대 값을 줄인 설정을 썼다(타자 `team_change` 4,000 / 투수 175). 1단계 체크포인트에서 시작했다.
+  - 타자 24,000 / 투수 1,050스텝이 141초에 함께 끝나 두 모델을 내보냈다.
+  - TensorBoard 기록 시각이 타자 → 투수 → 타자 순으로 번갈아 나타났다. 한 번에 한 팀만 배운다.
+  - `Self-play/ELO`, `Matchup/*`, `Benchmark Batter/*`·`Benchmark Pitcher/*`가 두 Behavior 로그 모두에 기록됐다. `Env/Aborted Play`는 0이다.
+  - `Player-0.log`에 예외는 없다. 실행 파일 안의 추론 전환도 오류 없이 동작했다.
+  - 같은 실행에서 잰 결정 비율은 타자 49.4결정/2.13구 = 투구당 23.3, 투수 투구당 1.0이다. 설정값 환산 근거(23)와 맞는다.
+- **3단계 셀프플레이 실행 시험:** 위 2단계 시험 체크포인트에서 타자·투수를 시작했다. 셀프플레이는 타자·투수에만 넣었다.
+  - 네 Behavior가 모두 연결됐다(`BaseballBatter?team=0`, `BaseballPitcher?team=1`, `BaseballRunner?team=0`, `BaseballFielder?team=1`). 약 150초에 모두 모델을 내보냈다.
+  - 타자·투수 기록 시각은 네 번 번갈아 나타났다. 주자·수비는 교대와 무관하게 처음부터 끝까지 계속 기록됐다. 셀프플레이 학습기와 일반 MA-POCA 학습기가 한 실행에서 함께 동작한다.
+  - `Benchmark Batter/On Base`·`Benchmark Pitcher/On Base`가 기록됐다. `Env/Aborted Play`는 0, `Player-0.log` 예외는 0이다.
+  - 시험 설정은 주자·수비 `max_steps`가 작아 먼저 도달했다. 그 뒤로도 타자·투수가 끝날 때까지 스텝이 계속 늘고 체크포인트를 저장했다(업데이트는 없음). 실제 설정에서도 가장 늦게 끝나는 Behavior까지 실행이 이어진다.
+- **미확인:** 실제 크기 설정의 장시간 셀프플레이 학습과 순환 억제 효과, 원본 대화형 Editor의 Play, 평가 지표의 장기 추이.
+
+### 12.20 2·3단계 실행 파일 스크립트 누락 수정과 2단계 자동 학습 시작 (2026-09-27)
+
+1단계가 3,000,042스텝으로 끝났다. 이어서 16:15에 `auto_curriculum.py --start-stage 2`로 시작한 2단계 학습기가 `UnityTimeOutException`으로 종료됐다. 실행 파일 로그(`Player-0.log`)에 `The referenced script ... is missing!`이 82회 있었다. 16:24와 16:29에 다시 만든 실행 파일도 확인했다. 빌드 로그에 `Script attached ... is missing` 150회, 실행 시험에도 같은 누락이 있었다. 모든 MonoBehaviour가 빠져 Agent가 없으니 학습기가 연결을 기다리다 시간이 초과된 것이다.
+
+- **원인:** 이 PC의 TEMP가 8.3 짧은 경로(`C:\Users\MRHONG~1\...`)다. `tempfile.gettempdir()` 아래에 만든 빌드용 복사본을 그 경로로 열어서 프로젝트 MonoScript가 연결되지 않았다(12.10 이전 격리 복사본에서 본 현상과 같다).
+- **수정:** `WORK`를 `Path(tempfile.gettempdir()).resolve()`로 바꿔 긴 이름 경로(`C:\Users\mr hong\AppData\Local\Temp\baseball-curriculum-build`)를 쓴다. 길이는 짧은 경로와 같아서 Burst 경로 길이 문제는 없다. 스크래치 복사본처럼 긴 경로에서는 Burst 빌드가 실패했다. `CurriculumPlayerBuild`는 누락 스크립트가 있으면 빌드 전에 중단한다.
+- **재빌드:** `--start-stage 2 --build-only`로 2·3단계를 다시 빌드했다. 두 빌드 모두 성공했고 빌드 로그의 누락 스크립트는 0회다.
+- **실행 시험(결과는 임시 폴더, 원본 `Training/results` 아님):**
+  - 2단계: 1단계 체크포인트에서 시작해 타자 3,000 / 투수 150스텝 학습 후 두 모델을 내보냈다. `Player-0.log` 누락 0, 조준 실패 0, 중단 0. TensorBoard `Batted Ball/Distance (m)` 79~96 m(수정 전 612.9 m), `Env/Aborted Play` 0.
+  - 3단계: 위 2단계 시험 체크포인트에서 시작했다. 타자·투수·주자·수비 네 Behavior가 모두 등록돼 모델을 내보냈다. 누락 0, 조준 실패 0, 중단 0.
+- **학습 시작:** 실패한 2단계 시작 폴더를 `Training/results/stage2_batter_pitcher_failed_20260927_1616`으로 옮겨 보존했다. 18:40에 새 콘솔 창에서 `auto_curriculum.py --start-stage 2 --skip-build`를 시작했다. 시작 후 약 2.5분 동안 타자 60,000스텝, 투수 2,000스텝 진행을 확인했다. 초기 속도로는 2단계에 약 6~7시간(투수 400,000스텝이 가장 늦음) 걸린다.
+- **미확인:** 2단계 완료와 3단계 자동 전환, 장시간 학습 성능. 16:23~16:24에 만든 실패 빌드는 다른 세션이 `Training/builds/*_failed_20260927_1625`로 옮겨 두었다. 16:29 빌드는 이번 재빌드로 덮어썼다.
+
+### 12.19 병렬 경기장 투구 조준·비거리 수정 검증 (2026-09-27)
+
+1단계 학습 로그에서 3번 경기장의 일부 포심 투구가 `투구 조준이 수렴하지 않았다 (남은 오차 0.001 m)`로 거부됐다. 학습은 계속 진행돼 `BaseballBatter` 3,000,042스텝의 최종 모델이 저장됐지만, 마지막 TensorBoard 구간의 `Env/Aborted Play`는 평균 약 0.004였다. 같은 구간의 `Batted Ball/Distance (m)` 평균 612.9 m는 병렬 경기장의 월드 X 오프셋이 포함된 잘못된 값이다. 이 과거 이벤트 값은 수정 후에도 바뀌지 않으며, 모델 보상에는 사용되지 않았다.
+
+- **원인과 수정:** 투구 해석기가 월드 좌표에서 매 단계를 적분해 먼 경기장에서 float 반올림 오차가 누적됐다. 시작점 기준 변위로 적분하도록 바꿨다. 타구 스냅샷의 `FirstTouchPoint`는 기존대로 월드 좌표를 유지하고 `Distance`만 해당 경기장 홈 기준으로 계산한다.
+- **투구 전수 검사:** 격리 복사본(Unity 6000.5.2f1)의 네 경기장에서 5구종을 110~160 km/h, 0.1 km/h 간격으로 총 10,020회 조준했다. 수정 전 같은 방식의 검사에서는 2번 경기장 2회, 3번 경기장 18회 실패했고, 수정 후에는 모두 성공했다.
+- **회귀:** 격리 복사본에서 플레이그라운드 물리·판정·주루·보상·상황 검사와 1~3단계 `MultiArenaVerification`·`BatterAgentVerification`·`TrainingStageVerification`을 다시 실행했다. 세 단계 모두 800 고정 단계 동시 진행에서 중단 0회, 실제 홈플레이트 통과점의 최대 목표 오차는 1단계 0.87 cm, 2·3단계 0.69 cm였고 전체 하네스 종료 코드는 0이다. 각 경기장의 홈 기준 비거리 50 m와 첫 닿음 월드 좌표 보존도 확인했다.
+- **미확인:** 원본 대화형 Editor의 수정 후 장시간 Play·재학습과 새 실행 파일의 장시간 학습 성능. 기존 1단계 ONNX 모델은 완료됐으며, 이 수정만을 위해 재학습하지 않았다.
+
+### 12.18 병렬 경기장 복제 검증 (2026-09-27)
+
+**실행 방식.** 12.15와 같은 격리 복사본 배치 하네스(Unity 6000.5.2f1, 긴 경로)를 썼다. 한 번 실행에 다음을 모두 한다: 경기장 4개로 1·2·3단계 씬 생성 → 플레이그라운드 회귀 → 단계마다 `MultiArenaVerification`·`BatterAgentVerification`·`TrainingStageVerification`. 최종 코드 기준 실행의 종료 코드는 0이었다. 로그의 예외는 복사본 PackageCache 경로 길이와 App UI 네이티브 플러그인에서 나온 것뿐이고, 프로젝트 코드 예외나 컴파일 오류는 없었다.
+
+- **씬 구성:** 단계마다 `TrainingEnvController` 4개, `arenaIndex` 0~3이다. Agent 수는 1단계 4, 2단계 8, 3단계 44다. `DebugPresenter`는 0번 경기장만 켜져 있다. 반영 전 백업과 비교하면 경기장 루트 아래 Transform과 컴포넌트가 정확히 4배이고 루트 이름만 `(Arena 1~3)`이 붙었다. 카메라·조명·Global Volume·씬 설정은 하나 그대로다. 플레이그라운드 씬은 바이트 단위로 변하지 않았다. 씬 `.meta` GUID도 그대로다.
+- **참조 격리:** 세 단계 모두 각 컨트롤러·Director·Agent·수비·주자 참조가 자기 경기장 루트 안에 있다. 가장 가까운 경기장 간격은 400 m다.
+- **동시 진행:** 800 스텝 동안 모든 경기장이 스스로 진행했다. 공은 자기 홈에서 최대 18.4 m 안에 있었고, 중단된 플레이는 0개다.
+
+| 단계 | 경기장별 투구 수 | 첫 투구 구속(km/h) |
+| --- | --- | --- |
+| 1 | 23/23/24/23 | 139.5 / 123.6 / 133.9 / 125.4 |
+| 2 | 25/25/25/25 | 145.0 × 4 (학습기 없는 투수 중립 행동) |
+| 3 | 25/24/24/24 | 145.0 × 4 (같은 이유) |
+
+- **경기장별 시드:** 첫 실행에서는 시드를 `arenaIndex × 7919`만큼 더했다. 그러자 1단계 첫 구속이 139.5/142.1/144.7/147.3으로 일정 간격이 됐다. `System.Random`이 시드 간격에 선형으로 반응한 것이다. 0번은 원래 시드를 그대로 쓰고 나머지는 해시로 섞도록 고쳤다. 다시 실행한 결과는 위 표처럼 서로 독립된 값이다.
+- **홈 기준 관측(3단계):** 무작위 상황을 끄고 초기화했을 때 경기장마다 홈 기준 수비 위치가 0.00 mm 차이로 같았다. 같은 상황(1루 주자)과 같은 타구를 모든 경기장에 넣고 11스텝 진행했다. 수비·주자 관측 벡터 21개가 경기장 사이에서 최대 0.000008 차이로 일치했다.
+- **회귀:** 플레이그라운드의 투구 판정·타구·주루·타자 평가·타자 보상·경기 상황 검증과 1~3단계 규칙 검증이 모두 PASS다. 3단계 시나리오 A~K 결과는 12.15와 같다.
+- **미확인:** 원본 대화형 Editor에서 4개 경기장 씬을 연 Play·학습, 경기장 수에 따른 실제 프레임 속도, 새 씬으로 다시 빌드한 `Training/builds/` 실행 파일.
+
+### 12.17 TensorBoard 야구 지표 검증 (2026-09-27)
+
+원본 Editor는 건드리지 않았다. 격리 복사본 배치 모드(Unity 6000.5.2f1)에서 컴파일과 검증을 했고, 학습기는 실제 mlagents 1.1.0으로 연결했다.
+
+- **컴파일·단계 검증:** 컴파일 오류 없이 1·2·3단계 씬 모두 `TrainingStageVerification.Run()` PASS. 새로 넣은 지표 검사는 다음과 같다.
+  - 1단계: 중앙 스트라이크 12개 뒤 `Called Strike`·`Zone Rate`=1, `Swing Rate`=0, 삼진 타석 `Pitches`=3, 구속 범위 안, 구종·출루 지표 없음
+  - 2단계: 볼넷(`Pitches`=4, `Chase Rate`=0, `Four Seam`=1), 삼진, 컨택 투구(`Contact Rate`·`Zone Swing Rate`·`Fair`=1). 기록값은 타구 100.2 km/h, 발사각 14.7°, 타이밍 +20 ms였다.
+  - 3단계: 시나리오별 값 일치
+    - 포스 아웃: `Play/Outs`=1, `On Base`=0
+    - 단타: `Batter Bases`=1, `Runner Safe`=1, `On Base`=1
+    - 희생플라이: `Runs`=1
+    - 만루 볼넷: `On Base`=1
+    - 2아웃 삼진: `Half Inning/Runs`=0
+- **실제 TensorBoard 기록:** 같은 코드로 1~3단계 실행 파일을 짧은 경로의 복사본에서 빌드했다. 긴 스크래치 경로에서는 PackageCache 경로 길이 때문에 Burst 단계가 실패해서 경로를 옮겼다. 결과는 원본 `Training/`이 아니라 임시 폴더에 남겼다.
+  - 1단계 6,000스텝: `BaseballBatter` 로그에 야구 지표 25종과 `Swing/Timing Error (ms)_hist` 히스토그램이 기록됐다. 학습 초기 정책은 첫 결정에서 바로 스윙해 모두 헛스윙이었다(타이밍 약 -335 ms). 그래서 타구 지표는 나오지 않았다.
+  - 2단계(타자 3,000 / 투수 150스텝): 타자·투수 로그 모두에 같은 야구 지표 31종이 기록됐다. 구종 비율은 5종 각각 약 0.12~0.23이었다. 점 간격만 두 Behavior의 `summary_freq`에 따라 달랐다.
+- **미확인:** 원본 대화형 Editor에서의 Play 학습, 실제 3단계 학습 중 `Play`·`Half Inning` 지표의 TensorBoard 기록(수비 결과는 Editor 시나리오로만 확인), 장시간 학습에서 지표 추이.
+
+### 12.16 단계 자동 전환 연결 검증 (2026-09-27)
+
+- 원본 Editor에서 진행 중인 1단계 학습(PID 18100)은 유지했다. 별도 복사본의 배치 Unity로 2·3단계 Windows 실행 파일을 빌드했다. 두 빌드 모두 성공했으며 원본 `Assets`·씬을 빌드용으로 수정하지 않았다. 빌드 로그에 긴 PackageCache 경로의 import 예외가 있었으나 실행 파일 연결 시험은 통과했다. 다음 빌드의 임시 복사본 경로는 짧은 시스템 임시 경로로 바꿨다.
+- 현재 1단계 체크포인트에서 시작한 짧은 2단계 학습으로 Unity 통신 1.5.0 연결, 타자·투수 Behavior 등록, 두 최종 모델 생성을 확인했다.
+- 위 2단계 시험 체크포인트에서 시작한 짧은 3단계 학습으로 타자·투수·주자·수비 네 Behavior 등록과 네 최종 모델 생성을 확인했다.
+- 실제 실행 환경의 PyTorch 2.7.1+cu128에서 기존 1단계 체크포인트를 `--torch-device cpu`로 읽으면 CPU·CUDA 텐서 불일치로 중단됐다. 자동 실행은 ML-Agents 기본 장치 선택을 사용하도록 고쳤고, 같은 체크포인트의 2·3단계 짧은 학습이 종료 코드 0으로 끝났다.
+- 자동 전환 검사에 짧은 실행 결과를 넣었을 때 두 단계의 모든 Behavior를 완료로 확인했고, 아직 1단계 최종 모델이 없는 현재 상태에서는 2단계 전환을 거부했다.
+- `auto_curriculum.py --attach-stage1-pid 18100 --skip-build` 감시 프로세스를 시작해 `waiting_stage1` 상태를 확인했다. 실제 300만 스텝 종료 후 2단계 시작, 2단계 전체 학습 종료 후 3단계 시작, 장기 학습 성능은 아직 확인 전이다. 상태 파일과 단계별 로그는 `Training/results/`에 남는다.
+
+### 12.15 후속 작업 검증 — 구종 보정·볼카운트·주자 여러 명·결과 보상 (2026-09-26)
+
+**실행 방식.** 12.12와 같은 격리 복사본 배치 하네스를 쓰되, 이번에는 한 번 실행으로 1·2·3단계 씬을 차례로 모두 검증하도록 넓혔다. 최종 코드 실행은 종료 코드 0이었다. 반영 전 씬 확인 결과는 다음과 같다.
+
+- 오브젝트 이름 목록을 순서 무시로 비교했다.
+- 1·2단계는 오브젝트 구성이 같고, 3단계는 누상 주자 3명(각 Visual·Body·Head)만 늘었다.
+- 새 관측 크기가 직렬화됐다: 타자 16, 투수 11, 주자 57 × 4, 수비 65 × 5.
+- 틀 씬·TagManager는 바뀌지 않았다.
+
+**구종 보정.** 게임 물리를 그대로 옮긴 Python 복제로 방향·효율을 찾았다. 복제는 기존 C# 변화량과 소수점까지 일치했다. 결과는 아래와 같고, MLB 평균과의 차이는 모두 1 cm 안이다.
+
+| 구종 | 좌우 | 상하 |
+| --- | ---: | ---: |
+| 포심 | -18 cm | +41 cm |
+| 투심 | -38 cm | +20 cm |
+| 커브 | +23 cm | -25 cm |
+| 슬라이더 | +21 cm | +2 cm |
+| 체인지업 | -36 cm | +18 cm |
+
+실제 Director 투구 25개의 최대 목표 오차는 1.33 cm였다.
+
+**회귀·규칙 (틀 씬).**
+
+- 기존 5종 통과: `PITCH_CALL`, `BATTED_BALL`, `RUNNER`, `BATTING_EVAL`(최적 틱 20), `BATTER_REWARD`
+- 새 `GameSituationVerification` 통과
+  - 볼넷, 삼진, 2스트라이크 파울, 1·3루 볼넷의 만루, 만루 볼넷 득점
+  - 인플레이 결과, 3아웃 반 이닝 초기화
+  - 주자 오브젝트 없는 씬의 빈 베이스
+  - 보상 식 예시
+
+**단계별 결과.**
+
+- 1·2·3단계 공통 `BatterAgentVerification`
+  - 중립 타석은 존 중앙 3구 삼진, 에피소드 보상 -4.000
+  - 스윙 행동은 인플레이. 1·2단계 결과 0(에피소드 0.500), 3단계 결과 +0.500(에피소드 1.000)
+- 1단계: 존 중앙 포심 12구(122.5~145.8 km/h, 최대 오차 0.87 cm), 삼진 타석 4개
+- 2단계
+  - 볼넷 타석: 투수 -1.40 / 타자 +1.0
+  - 삼진 타석: 투수 +2.50 / 타자 -4.00
+  - 접촉: 투수 투구 보상 -0.616
+- 3단계(무작위 상황 끔, 스크립트 수비)
+
+  | 시나리오 | 결과 요약 | 보상 (타자 / 주자 그룹 / 수비 그룹) |
+  | --- | --- | --- |
+  | 중립 | 3구 삼진, 수비 에피소드 없음 | — |
+  | A | 1루 `ForceOut` (3.76 s) | -0.50 / -1.00 / +1.00 |
+  | B | LCF `FlyOut` (4.30 s) | — / 0 / +1.00 |
+  | C | 1루 `RunnerSafe` (7.84 s, 1초 정리 시간 포함) | +0.50 / +0.25 / -0.25 |
+  | D | 2루 `RunnerSafe` (10.34 s) | — / +0.50 / -0.50 |
+  | E | 3B 파울 지역 `FlyOut` | — |
+  | F 1루 | 2루 포스 아웃, 타자 1루 세이프(야수 선택) | 0 / -0.75 / +0.75 |
+  | G 3루·1아웃 | 희생플라이 1점, 2아웃 | 0 / +1.25 / — |
+  | H 만루 | 볼넷 밀어내기 1점, 만루 유지 | +1.0 / — / — |
+  | I 1루·2아웃 | 삼진 → 새 반 이닝 0아웃·주자 없음 | — |
+  | J 2루 | 1타점 단타 | +1.00 / +1.75 / -1.75 |
+  | K 1루 | 유격수 뜬공 → 주자 리터치 전 1루 송구로 더블 아웃(`TagOut`) | — |
+
+  결과 보상은 모두 규칙과 일치했다.
+
+**실행 중 고친 문제.**
+
+- **3단계 에피소드 누적 보상 불일치.** 시나리오 타구처럼 타자가 한 번도 결정하지 않은 타석에서 `EndEpisode`를 부르면, ML-Agents는 결정 없이 연속된 종료를 무시하고 누적 보상을 이어 갔다. 결정이 없던 타석은 에피소드로 닫지 않도록 고쳤다.
+- **태그업 불가.** 희생플라이 시나리오에서, 포구 순간 모든 주자가 베이스에 있으면 플레이가 즉시 죽어 태그업할 수 없었다. 플레이 종료 전 1초 정리 시간(`Play Dead Seconds`)을 두었다.
+
+**미확인 항목.**
+
+- 원본 Editor에서 다시 불러온 뒤의 화면 동작
+- Python 학습과 성능
+- 무작위 상황(30%)을 켠 긴 연속 실행
+- 주자 추월·한 베이스 두 주자 같은 규칙 밖 상황의 빈도
+
+### 12.12~12.14 학습 커리큘럼 1~3단계 씬 검증 (2026-09-26)
+
+**실행 방식.** 대화형 Editor가 원본을 열고 있어 12.10과 같은 격리 복사본에서 실행했다(긴 경로, 배치 모드). 복사본 전용 하네스가 한 번에 세 가지를 한다.
+
+1. `TrainingSceneBuilder.Build`로 단계 씬을 만든다.
+2. `BaseballPlayground`에서 기존 검증 5종을 일시정지 Play Mode로 다시 실행한다.
+3. 단계 씬에서 `BatterAgentVerification`과 `TrainingStageVerification`을 실행한다.
+
+최종 코드로 3단계 하네스를 다시 돌려 세 씬을 모두 새로 만들고, 전부 통과한 결과를 원본에 반영했다(종료 코드 0).
+
+**반영 전 씬 차이 확인.**
+
+- 틀 씬: 타자 Agent·Behavior Parameters·Decision Requester·`BallEye` 128줄 삭제만 있다.
+- 단계 씬: 틀 씬에 해당 단계 오브젝트만 더해졌다.
+- 새 스크립트 GUID는 미리 쓴 `.meta`와 씬 참조가 일치한다.
+- TagManager는 바뀌지 않았다.
+
+**회귀 (수비 없는 틀 씬, 세 번 모두 통과).** `PITCH_CALL`, `BATTED_BALL`, `RUNNER`, `BATTING_EVAL`(최적 스윙 틱 20), `BATTER_REWARD`
+
+**12.12 1단계 (`Stage1_Batter`)**
+
+- `PASS neutral heuristic: 2 episodes, no swing`
+- `ball seen in 47/59 in-flight decisions`
+- `swing action: contact` (손잡이를 존 중앙 높이로 낮추고 도착 시각 기준 스윙)
+- `PASS stage 1: 12 center four-seamers, 120.3-145.8 km/h (range 120-150), arrival 0.473-0.573 s, max plate miss 0.77 cm, all called strikes, 12 plays reset, 0 aborted`
+
+**12.13 2단계 (`Stage2_BatterPitcher`)**
+
+- 투수 행동 매핑: 구종 5종, 좌우 ±0.466 m, 높이 0.230~1.280 m, 비유한·범위 밖 값 처리
+- 회전 없는 공 대비 변화량(구속 범위 가운데, 존 중앙). 부호 조건을 모두 만족했다. 크기는 MLB 평균보다 크다([투수 Agent](pitcher-agent.md) 참고).
+
+  | 구종 | 좌우 | 상하 |
+  | --- | ---: | ---: |
+  | 포심 | -17 cm | +63 cm |
+  | 투심 | -52 cm | +37 cm |
+  | 커브 | +19 cm | -64 cm |
+  | 슬라이더 | +44 cm | -15 cm |
+  | 체인지업 | -44 cm | +37 cm |
+
+- 중립 플레이: 포심 145.0 km/h가 존 중앙에 들어가 스트라이크. 투수 +1.0, 타자 -1.0
+- Director 실제 투구 25개(5구종 × 5위치): 최대 통과 오차 1.48 cm. 스트라이크 15개(+1), 볼 10개(-0.5), 보상이 일치했다.
+- 접촉: 타자 +0.613, 투수 -0.613
+
+**12.14 3단계 (`Stage3_FullTeam`)**
+
+| 검증 | 결과 |
+| --- | --- |
+| 구성 | 8개 Agent: 수비 5(팀 1), 투수(팀 1), 타자·주자(팀 0) |
+| 중립 투구 3개 | 수비 에피소드 없이 끝났다 |
+| A 유격수 땅볼 | 3.76 s에 1루 포스 아웃. 수비 +1, 주자 -1 |
+| B 좌중간 뜬공 | 4.30 s에 LCF 공중 포구 아웃 |
+| C 가운데 안타 | LCF가 잡아 1루 `RunnerSafe`. 수비 -0.25, 주자 +0.25 |
+| D 주자 2루 시도 | 송구가 늦어 2루 `RunnerSafe`. 수비 -0.50, 주자 +0.50 |
+| E 3루 쪽 파울 뜬공 | 3B가 (-15.8, 12.9) 파울 지역에서 잡아 아웃 |
+| 결과 보상 | 규칙과 일치했고, 주자 누적 보상과도 일치했다 |
+
+**실행 중 고친 문제.**
+
+- 틀 씬 정리에서 Decision Requester가 Agent에 의존해 지우기가 실패했다. 지우는 순서를 고쳤다.
+- 검증 코드의 C# 확정 할당 오류(CS0170)를 고쳤다. 원본 Editor에도 잠깐 컴파일 오류로 보였을 수 있다.
+
+**미확인 항목.**
+
+- 원본 Editor에서 씬을 다시 불러온 뒤의 화면 동작
+- Python `mlagents-learn` 연결과 실제 학습 성능
+- 병렬 빌드(`--num-envs`)
+- 수비 Agent 학습 가능성. 검증은 스크립트 수비로만 했다.
+- 먼 외야 송구가 닿지 않아 거부되는 빈도
+
+### 12.11 타자 레이 센서·중립 휴리스틱 검증 (2026-09-26)
+
+12.10과 같은 방식으로 실행했다. 격리 복사본을 긴 경로로 열고 배치 모드에서 수정된 `Add Batter ML-Agent To Current Scene`을 두 번 호출했다.
+
+**씬·설정 결과**
+
+- `Actors/Batter/BallEye`에 레이 센서 하나가 생겼다. 위치는 월드 (-1.10, 1.65, 0.50)이다.
+- 레이는 51개, 반각 55.6°, 길이 21.0 m, 구체 반지름 0.25 m, 스택 3이다.
+- 발사 지점과 투구 목표가 부채꼴 평면에서 벗어난 거리는 둘 다 0.000 m다.
+- 공에는 `Ball` 태그가 붙었고, 벡터 관측 크기는 10, `Use Child Sensors`는 켜져 있다.
+
+**원본 반영**
+
+- 씬 차이는 다음뿐이었다: `BallEye` 오브젝트·컴포넌트 추가, `Batter` 자식 목록 1줄, 공 태그, 관측 크기 16→10, 제거된 `heuristicSwingTimeSeconds` 줄 삭제.
+- `ProjectSettings/TagManager.asset`에는 태그 `Ball`이 추가됐다. Unity가 이 파일을 serializedVersion 2→3으로 다시 저장하면서 빈 렌더링 레이어 슬롯 24개를 지웠다. 물리 레이어 32개와 이름 있는 렌더링 레이어 8개는 그대로다.
+- 원본이 백업 이후 바뀌지 않았음을 확인한 뒤 씬과 TagManager를 원본에 반영했다.
+
+일시정지한 배치 Play Mode의 `BatterAgentVerification.Run()` 결과:
+
+- `PASS neutral heuristic: 2 episodes, no swing, last reward -1.000`
+- `PASS ball eye: 51 rays x 3 values, stacks 3; ball seen in 50/64 in-flight decisions (elapsed 0.04-0.52 s)`
+- `PASS swing action: contact, last reward 0.797, cumulative 0.797` (`OnActionReceived`에 0.38초 스윙 행동을 직접 넣음)
+
+로그에 `Heuristic method called but not implemented` 경고는 없었다. `[BatterAgent]` 초기화 오류나 태그 미정의 오류도 없었다.
+
+미확인 항목:
+
+- 원본 Editor에서 씬·TagManager를 다시 불러온 뒤의 상태
+- 비행 중 공이 보이지 않은 14회의 위치(먼 거리 레이 간격인지, 홈 통과 이후인지)
+- 무작위 투구 위치 모드에서의 감지율
+- 실제 학습
+
+### 12.10 타자 Agent 배치 이동 검증 (2026-09-26)
+
+대화형 Editor가 원본 프로젝트를 열고 있어 Unity 6000.5.2f1 격리 복사본에서 배치 모드(`-batchmode -nographics -executeMethod`)로 실행했다. 복사본 전용 하네스가 수정된 `Add Batter ML-Agent To Current Scene` 메뉴를 두 번 호출했다. 확인한 결과는 다음과 같다.
+
+- 기존 `BaseballEnvironment/Systems/BatterAgent`가 삭제되고 `BaseballEnvironment/Actors/Batter`에 `BatterAgent`·`BehaviorParameters`·`DecisionRequester`가 하나씩 붙었다. 두 번째 호출은 변경이 없었다.
+- Director 참조, `MaxStep = 0`, 관측 16·연속 7·이산 `[2]`, `Decision Period = 1`을 확인했다. 타자 자식에 센서 컴포넌트가 없음도 확인했다.
+- 씬 차이는 이전 오브젝트 99줄 삭제와 `Batter`의 컴포넌트 목록·세 컴포넌트 67줄 추가뿐이었다. 삭제된 fileID를 참조하는 곳은 없었다. 이 씬을 원본에 반영했다.
+- 이어서 일시정지한 배치 Play Mode에서 `BatterAgentVerification.Run()`을 실행했다. 결과는 `PASS batter ML-Agent: 2 episodes, last reward 0.800, cumulative 0.800, contact observed True`로 12.9와 같다.
+- 로그에는 프로젝트 스크립트 오류가 없었다. App UI 네이티브 플러그인 `DllNotFoundException`(`-nographics`)과 PackageCache 경로 경고만 출력됐다.
+
+실행 주의: `-projectPath`를 8.3 짧은 경로(`MRHONG~1`)로 준 세 번의 실행에서는 문제가 났다. 편집기 업데이트 약 20000틱을 기다려도 `MonoScript.GetClass()`가 null이었다. 씬의 프로젝트 MonoBehaviour는 누락 상태로 열렸고 `DecisionRequester`가 "Creating missing Agent component"를 출력했다. 같은 복사본을 긴 경로(`C:/Users/mr hong/...`)로 실행하자 30틱 만에 연결됐다. 원인은 경로 표기 차이로 추정하며, 배치 실행에는 긴 경로를 쓴다. 원본 Editor의 실시간 화면 조작과 씬 다시 불러오기 뒤 상태는 확인하지 않았다.
+
+### 12.9 타자 ML-Agents·센서 연결 검증 (2026-09-24)
+
+Unity 6000.5.2f1 격리 복사본에 `com.unity.ml-agents` 4.0.3을 설치하고 Editor 메뉴로 `BatterAgent`·`BehaviorParameters`·`DecisionRequester`를 씬에 연결한 뒤 저장했다. 해당 씬의 차이는 Agent 오브젝트와 Transform/컴포넌트 99줄 추가뿐임을 확인한 뒤 원본 씬에 반영했다. 패키지 잠금 파일도 복사본에서 해결한 4.0.3 버전으로 갱신했다. 4.0.0은 이 Editor에서 패키지 내부의 사용 중단 API로 컴파일 오류가 나서 사용하지 않았다.
+
+일시 정지한 배치 Play Mode에서 `Academy.EnvironmentStep()`, Director 고정 단계, 실제 `Physics.Simulate(0.02)`를 순서대로 실행했다. 휴리스틱 기준 자세/스윙으로 **2개 에피소드가 연속 완료**, 접촉 관찰, 수동 입력·자동 반복 투구 비활성화, 마지막 보상 계산기 합계 **0.800 = ML-Agents 누적 보상 0.800**을 확인했다. 새 코드 컴파일 오류와 관측 크기 불일치 경고는 없었다. Unity Search 인덱서의 기존 `ArgumentOutOfRangeException`은 배치 시작 중 출력됐다.
+
+수동 재실행은 Play Mode를 일시정지한 뒤 `Tools > Baseball Simulation > Verify Batter ML-Agent (Paused Play Mode)`를 선택한다. 원본 Editor의 실시간 화면 조작, Python trainer 연결, 학습된 모델의 추론과 학습 성능은 아직 검증하지 않았다.
+
+### 12.8 타자 보상 계산 검증 (2026-09-24)
+
+Unity 6000.5.2f1에서 원본 `Assets`/`Packages`/`ProjectSettings`를 복사한 격리 프로젝트를 배치 Play Mode로 실행했다. 원본 씬과 사용자 작업 파일은 변경하지 않았다. 새 `BatterRewardTracker`와 `BatterRewardVerification`이 컴파일됐으며 검증은 PASS였다.
+
+| 검증 | 결과 |
+| --- | --- |
+| 보상식 예시 | 헛스윙 -1, 루킹 스트라이크 -1, 볼 0, 약한 페어 0.5, 빠른 페어 1.1, 높은 장타성 뜬공 -0.5, 빠른 파울 -1, 홈런 4.5 |
+| 중복 지급·초기화 | 8개 에피소드 완료 이벤트 각각 1회, 보상 변화 이벤트 12회. 동일 투구 판정 반복과 `Fair` 이후 `GroundRuleDouble`에서 추가 보상 없음. `BeginEpisode`로 성분과 완료 상태 초기화 |
+| 실제 `PlayDirector` 연결 | 무스윙 투구는 `CalledStrike`와 -1. 시드 12345의 최적 스윙 시점 20틱에서는 `Fair`, 접촉 0.5 + 타구 속도 0.415 = 총 0.915. 이벤트로 받은 보상 변화의 합계가 에피소드 합계와 일치 |
+
+검증 중 Unity Search 인덱서의 `ArgumentOutOfRangeException`이 시작 단계에서 한 번 출력됐으나 보상 검증은 통과했다. 원본 Editor의 직접 Play Mode 조작, Agent 연결, 학습 실행은 이 검증에 포함되지 않았다. 수동 재실행은 Play Mode를 일시정지한 뒤 `Tools > Baseball Simulation > Verify Batter Rewards (Paused Play Mode)`를 선택한다.
+
+### 12.7 볼/스트라이크 판정 검증 (2026-09-24)
+
+Unity 6000.5.2f1 배치 Play Mode, 현재 원본 `Assets`(주자·펜스가 저장된 씬 포함)를 복사한 격리 프로젝트. 복사본 씬에서 `Align Strike Zone And Plate Visuals`를 실행한 뒤 일시 정지하고 `PitchCallVerification.Run()`과 기존 검증 세 개를 실제 Rigidbody로 실행했다. 컴파일 오류 0건, 검사 실패 0건.
+
+| 검사 | 실제 결과 |
+| --- | --- |
+| 존 기하 | 존 중앙, 플레이트 옆·위·아래를 공 반지름만큼 스치는 경계(±1 mm), 오각형 뒤 모서리(사각형이면 스트라이크가 되는 위치가 볼), 뒤 꼭짓점 접촉 모두 기대대로 |
+| 루킹 판정 | 존 중앙 → `CalledStrike`(앞 모서리 통과 높이 0.748 m). 옆 모서리를 3 cm 스침 → `CalledStrike`, 5 cm 밖 → `Ball`, 0.40 m 밖·존 위 10 cm·존 아래 10 cm → `Ball` |
+| 바운드 | 높이 0 목표 → 플레이트 앞에서 바운드 후 0.085 m로 통과, `Ball` |
+| 스윙 | 존 밖 0.6 m 공에 기준 시각 스윙 → `SwingingStrike`. 공이 지난 뒤 스윙 → `SwingOffered=false`, `Ball` |
+| 기본 머신 투구 | 통과 높이 0.994 m, `CalledStrike`. 기준 스윙 타격 → `InPlay`(Fair) |
+| 이벤트·초기화 | 11개 투구에 `PitchCalled` 정확히 11회, 초기화 후 판정·위치 비움 |
+| 무작위 위치 | 설정 복제본 `RandomAroundZone`, 시드 777로 300구 → 루킹 스트라이크 비율 44.7%. 같은 시드로 다시 초기화하면 첫 목표 (0.142, 0.481) 재현 |
+| 표시 정렬 | 존 틀 위 1.030 m·아래 0.480 m·폭 0.432 m, 플레이트 앞 모서리(z 0.432) 평면. 홈 표시 판 중심 z 0.216 |
+| 회귀 | 타구 물리(12.6), 주루, 타자 평가 검증 모두 통과 |
+
+미확인: 원본 씬의 존 틀 정렬(사용자가 메뉴 실행 필요), 실제 키 입력과 HUD 존 패널 가독성. 존 높이 기본값은 리그 평균이며 이 타자 도형의 키로 산정한 값이 아니다.
+
+### 12.6 타구 판정·공기역학 확장 검증 (2026-09-23)
+
+Unity 6000.5.2f1에서 원본 `Assets`/`Packages`/`ProjectSettings`를 복사한 격리 프로젝트를 배치 Play Mode로 실행했다. 씬에 주자와 96조각 외야 펜스를 연결하고 일시 정지한 뒤, `Physics.Simulate(0.02)`로 실제 Rigidbody를 진행했다. 검사 메뉴는 `Tools > Baseball Simulation > Verify Batted Ball Physics (Paused Play Mode)`이며, 원본 씬에도 주자와 펜스를 저장했다. 컴파일 오류와 검사 실패는 0건이다.
+
+| 검사 | 실제 결과 |
+| --- | --- |
+| 36 m/s 역회전 직구 | 목표 중앙 통과 오차 0.0 mm, 목표 평면 속도 31.7 m/s |
+| 타구 첫 닿음 비거리 | 90/100/110 mph, 28°: 335/381/424 ft; 100 mph, 15°/35°: 301/381 ft. 사용한 대략 기준값과 각각 25 ft 이내 |
+| 페어·파울 | 외야 뜬공 페어/파울, 번트 정지 페어, 베이스 앞 파울 구름, 1루 통과 페어 모두 기대 판정 |
+| 외야 경계 | 중견수 방향 공중 장외 `HomeRun`, 파울 쪽 장외 `Foul`, 펜스 맞고 복귀 `Fair`, 지면 첫 닿음 97.4 m 뒤 0.74초에 펜스 넘기 `GroundRuleDouble` |
+| Director 연계 | 기준 스윙 20틱에서 고정 파워 ×1.5로 두 번 모두 42.3 m/s, 발사각 15.0°, 동일한 타구 속도 벡터. `BattedBallCalled` 발행 확인 |
+| 시드 | 12345의 첫 파워 배율 1.253, 재초기화 후 동일 순서에서 재현 |
+| 기존 회귀 | 주루 규칙/Director 득점, 타자 독립 평가 7종/10회 반복/스윙 범위 검증 모두 통과 |
+| 결과 분포 참고 | 고정 난수 정책 300회 중 접촉 227회, `HomeRun` 26회, `GroundRuleDouble` 3회, `Timeout` 198회, 미접촉 `PassedTarget` 73회. 이 정책의 분포이며 학습 성능 지표는 아님 |
+
+씬 안전 검사: 검증 프로젝트에서 Unity Editor가 저장한 펜스 포함 씬과 원본 씬을 `fileID` 블록별로 비교했다. 원본 851개 블록은 모두 유지됐고 기존 블록 변경은 `Field` Transform의 새 자식 참조 한 개뿐이다. 새 블록 482개는 펜스 루트 2개와 96조각 × 5개 컴포넌트다. 원본 씬 `.meta`는 교체하지 않았다.
+
+남은 확인: 원본 대화형 Game 뷰에서 펜스·HUD의 시각 상태와 실제 키 입력은 확인하지 못했다. 배치 모드 복사본의 Unity Search 색인에서 예외가 기록됐지만 검증 구성 요소의 예외나 컴파일 오류는 없었다. 홈런·인정 2루타 결과 뒤의 자동 베이스 수여/득점, 수비·아웃/세이프는 아직 구현되지 않았다. 아래 12.5의 `BallOutOfPlay` 및 파울 미구현 기록은 당시 실행 결과이며 현재 규칙은 `environment-spec.md` 최신 절을 따른다.
+
+### 12.5 주루 구현 검증 (2026-09-23)
+
+실행 환경: Unity 6000.5.2f1 배치 모드(`-nographics`), **격리된 프로젝트 복사본**. 원본 프로젝트는 대화형 Editor가 열고 있어 사용하지 않았다. 복사본에서만 쓴 임시 스크립트가 씬에 `RunnerSceneSetup.AddRunner()`로 주자를 추가하고 저장한 뒤 Play Mode 진입 → 일시 정지 → `RunnerVerification.Run()`과 기존 `BattingEvaluationVerification.Run()`을 차례로 실행했다. 실제 Rigidbody 물리를 0.02초씩 진행했고 스윙 파워 난수는 고정하지 않았다.
+
+| 검사 | 실제 결과 |
+| --- | --- |
+| 컴파일 | 오류 0건. 경고는 기존 코드와 같은 `FindFirstObjectByType` 사용 중단 경고(CS0618)뿐 |
+| 규칙: 1루 자동 주루 | 판단 없이 1루를 밟고 멈춤. 밟은 시각 3.9404초 = (거리 - 0.30 m) / 7 m/s 기대값과 일치, 이후 1루 중심에 정지 |
+| 규칙: 판단 거부 | 접촉 전, 첫 구간 귀루(목표 1루), 멈춤 중 귀루, 중복 귀루, 득점 후 판단 모두 거부 |
+| 규칙: 첫 구간 진루 후 귀루 | 목표 2루 → 귀루로 1루 목표 복귀, 1루에서 멈춤 |
+| 규칙: 중간 귀루·재진루 | 2루로 가다 귀루하면 1루로 돌아와 멈춤. 귀루 중 진루는 다시 2루로 방향 전환 |
+| 규칙: 베이스 돌기 | 진루 두 번이면 2루를 멈추지 않고 지나(Second:Advancing) 3루에서 멈춤 |
+| 규칙: 득점·초기화 | 3루에서 진루하면 Home:Scored 후 이동 정지. 초기화 후 Inactive·판단 거부 |
+| Director: 전환 | 기준 스윙(18틱) 접촉 순간 주자 Advancing, 타자 렌더러 숨김, 주자 표시 활성 |
+| Director: 1루 정지 | 1루 밟음 4.440초(투구 시작 기준). 공은 경계를 벗어나 정지(BallOutOfPlay=true)했지만 플레이는 BattedBallInFlight 유지 |
+| Director: 진루→귀루 | 진루 60틱 후 귀루, `RunnerBaseReached` First, First 순서 |
+| Director: 시간 초과 | 멈춘 주자로 12.00초에 Timeout |
+| Director: 초기화 | Ready, 주자 Inactive·숨김, 타자 표시 복원, BallOutOfPlay=false |
+| Director: 득점 | 임시 설정 복제본(제한 30초)에서 진루 3회 → First, Second, Third, Home 순서, 16.08초에 RunScored. 원본 설정 에셋은 바꾸지 않았다 |
+| 타격 회귀 | 기존 12.4 시나리오 7개, 10회 반복, 입력 거부·초기화, 45/80/110° 기하 검사 모두 PASS. 주자가 있는 씬에서도 평가 이벤트는 투구당 1회 |
+
+로그의 예외 두 건은 복사본 환경에서 난 것이다. 복사하지 않은 Search 색인(`SearchDatabase`)과 `-nographics`의 URP 리소스 경고이며, 프로젝트 컴포넌트의 오류나 예외는 없었다.
+
+미확인: 원본 씬에 주자를 추가·저장하는 작업(사용자가 Editor 메뉴로 실행해야 함), 실제 F/B 키 입력, Game 뷰의 주자 외형·HUD 가독성, Scene 뷰 Gizmo(주자 선택 시 다음 베이스와 도착 반경), 다른 Fixed Timestep. 수비가 없어 아웃/세이프(R-01의 `SafeAtFirst`, D 시나리오)는 검증 대상이 아니다.
+
+재현: 원본에서 `Tools > Baseball Simulation > Add Batter-Runner To Current Scene` 실행 후 씬 저장 → Play → Pause → `Tools > Baseball Simulation > Verify Runner (Paused Play Mode)`. 주자 참조가 없으면 규칙 검사만 하고 Director 통합은 SKIP으로 보고한다. 수동 확인: P → 약 0.36초 후 Space → 접촉 후 1루 도착 전후로 F(진루)/B(귀루), R 초기화.
+
+### 스윙 파워 120~200% 변경 (2026-09-18 당시 기록; 최신 검증은 12.6)
 
 스윙 시작 시 1.2~2.0배를 한 번 추첨해 기존 접촉 품질 기반 타구 속도에 곱한다. 코드 검토로 추첨 위치, 접촉 시 적용, 초기화와 평가 점수 분리를 확인했다. Unity MCP 세션에 연결되지 않아 이번 변경의 컴파일/Play Mode 검증은 미실행이다. 아래 기존 실행 기록의 타구 속도는 배율 추가 전 값이다.
 

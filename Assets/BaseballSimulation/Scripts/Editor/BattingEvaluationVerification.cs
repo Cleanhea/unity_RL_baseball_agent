@@ -29,7 +29,10 @@ namespace BaseballSimulation.Editor
             {
                 director.SetManualInputEnabled(false);
                 Physics.simulationMode = SimulationMode.Script;
-                BattingEvaluation normal = RunPitch(director, default, 18, new SwingCommand(0f, 15f));
+                // Pitch timing depends on speed and air drag, so derive the reference swing tick instead of fixing it.
+                int best = FindBestSwingTick(director);
+                evaluations = 0;
+                BattingEvaluation normal = RunPitch(director, default, best, new SwingCommand(0f, 15f));
                 Require(normal.HasContact, "Central pitch contact");
                 Require(normal.Scores.x == 1f && normal.Scores.y == 1f && normal.Scores.w > 0.99f,
                     "Independent reference scores");
@@ -37,24 +40,24 @@ namespace BaseballSimulation.Editor
                 Add(report, "reference", normal);
 
                 var stance = RunPitch(director, new BatterSetupCommand(new Vector2(-0.6f, 0f), Vector3.zero),
-                    18, new SwingCommand(0f, 15f));
+                    best, new SwingCommand(0f, 15f));
                 Require(!stance.HasContact && stance.Scores.x == 0f && stance.Scores.y == 1f,
                     "Body translation affects reach and only stance diagnostic");
                 Require(Mathf.Abs(stance.GripPosition.x - normal.GripPosition.x + 0.6f) < 0.001f, "Grip follows body");
                 Add(report, "stance -0.6m", stance);
 
                 var grip = RunPitch(director, new BatterSetupCommand(Vector2.zero, new Vector3(0f, 0.35f, 0f)),
-                    18, new SwingCommand(0f, 15f));
+                    best, new SwingCommand(0f, 15f));
                 Require(!grip.HasContact && grip.Scores.x == 1f && grip.Scores.y == 0f, "Grip height changes contact");
                 Add(report, "grip +0.35m", grip);
 
-                var early = RunPitch(director, default, 10, new SwingCommand(0f, 15f));
-                var late = RunPitch(director, default, 26, new SwingCommand(0f, 15f));
+                var early = RunPitch(director, default, best - 8, new SwingCommand(0f, 15f));
+                var late = RunPitch(director, default, best + 8, new SwingCommand(0f, 15f));
                 Require(!early.HasContact && early.TimingErrorSeconds < -0.1f && early.Scores.z == 0f, "Early swing");
                 Require(!late.HasContact && late.TimingErrorSeconds > 0.1f && late.Scores.z == 0f, "Late swing");
                 Add(report, "early", early); Add(report, "late", late);
 
-                var angle = RunPitch(director, default, 18, new SwingCommand(40f, -20f));
+                var angle = RunPitch(director, default, best, new SwingCommand(40f, -20f));
                 Require(angle.SwingAngleErrorDegrees > 40f && angle.Scores.w < normal.Scores.w,
                     "Swing plane angle is evaluated");
                 Require(Vector3.Distance(angle.BatTipPosition, normal.BatTipPosition) > 0.1f, "Angle changes actual bat geometry");
@@ -67,7 +70,7 @@ namespace BaseballSimulation.Editor
 
                 for (int i = 0; i < 10; i++)
                 {
-                    var repeated = RunPitch(director, default, 18, new SwingCommand(0f, 15f));
+                    var repeated = RunPitch(director, default, best, new SwingCommand(0f, 15f));
                     Require(repeated.HasContact && Mathf.Abs(repeated.TimingErrorSeconds - normal.TimingErrorSeconds) < 0.00001f,
                         "Repeatable hit and timing");
                 }
@@ -89,7 +92,7 @@ namespace BaseballSimulation.Editor
                 Require(director.State == PlayState.Ready && !director.HasSwung && !director.HasContact &&
                     ball.Velocity.sqrMagnitude < 0.0001f && director.GetBattingEvaluation().Setup.StanceOffset == Vector2.zero,
                     "Reset cancels queued actions and restores body/bat/ball/evaluation");
-                report.AppendLine("PASS: 7 independent scenarios, 10 repeat hits, input guards and full reset.");
+                report.AppendLine($"PASS: 7 independent scenarios (best swing tick {best}), 10 repeat hits, input guards and full reset.");
                 VerifyGeometry(report);
                 return report.ToString();
             }
@@ -100,6 +103,15 @@ namespace BaseballSimulation.Editor
                 Physics.simulationMode = previousMode;
                 director.SetManualInputEnabled(manual);
             }
+        }
+
+        /// <summary>Probe swing at tick 18, then shift by the measured timing error. Needs Script physics mode.</summary>
+        internal static int FindBestSwingTick(PlayDirector director)
+        {
+            const int probe = 18;
+            BattingEvaluation result = RunPitch(director, default, probe, new SwingCommand(0f, 15f));
+            if (!result.HasTimingReference) throw new Exception("Batting verification failed: probe swing has no timing reference");
+            return probe - Mathf.RoundToInt(result.TimingErrorSeconds / Time.fixedDeltaTime);
         }
 
         private static BattingEvaluation RunPitch(PlayDirector director, BatterSetupCommand setup,

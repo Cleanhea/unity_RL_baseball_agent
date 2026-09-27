@@ -20,7 +20,10 @@ namespace BaseballSimulation
         private Vector3 exitVelocity;
         private SwingCommand command;
         private float swingPowerMultiplier = 1f;
+        // Environment-owned RNG seeded from config, so power draws are reproducible and do not share UnityEngine.Random.
+        private System.Random powerRandom;
         public bool HasSwung => startedAt >= 0f;
+        public float SwingPowerMultiplier => swingPowerMultiplier;
         public bool HasContact { get; private set; }
         public float ContactQuality { get; private set; }
         // Root stays upright, facing the field. Offsets are metres in field axes.
@@ -30,13 +33,18 @@ namespace BaseballSimulation
         {
             config = settings;
             targetPosition = target;
+            powerRandom = new System.Random(settings.RandomSeed);
             ResetState();
         }
 
         public void AssignBat(Transform value) => bat = value;
 
+        /// <summary>Restarts the power RNG for a reproducible episode (PlayDirector.RequestResetPlay(seed)).</summary>
+        public void Reseed(int seed) => powerRandom = new System.Random(seed);
+
         public void ResetState()
         {
+            SetVisible(true);
             if (config == null) return;
             startedAt = -1f;
             expectedArrival = -1f;
@@ -82,11 +90,20 @@ namespace BaseballSimulation
 
         public void SetPitchReference(float arrivalSeconds) => expectedArrival = arrivalSeconds;
 
+        // Hidden while the batter-runner takes over after contact; display only.
+        public void SetVisible(bool visible)
+        {
+            foreach (Renderer part in GetComponentsInChildren<Renderer>(true)) part.enabled = visible;
+        }
+
         public void BeginSwing(SwingCommand value, float time)
         {
             command = value;
             startedAt = time;
-            swingPowerMultiplier = Random.Range(1.2f, 2f);
+            Vector2 range = config.SwingPowerMultiplierRange;
+            // Equal min/max fixes the multiplier and consumes no random numbers.
+            swingPowerMultiplier = range.x >= range.y ? range.x
+                : Mathf.Lerp(range.x, range.y, (float)powerRandom.NextDouble());
             Pose(0f);
         }
 
