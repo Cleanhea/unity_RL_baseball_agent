@@ -1,0 +1,704 @@
+{
+    "name": "root",
+    "gauges": {
+        "BaseballBatter.Policy.Entropy.mean": {
+            "value": 1.2896534204483032,
+            "min": 1.2885091304779053,
+            "max": 2.1057348251342773,
+            "count": 150
+        },
+        "BaseballBatter.Policy.Entropy.sum": {
+            "value": 25747.9296875,
+            "min": 25683.564453125,
+            "max": 42165.234375,
+            "count": 150
+        },
+        "BaseballBatter.PitchCall.Ball.mean": {
+            "value": 0.31413612565445026,
+            "min": 0.0,
+            "max": 0.38179347826086957,
+            "count": 150
+        },
+        "BaseballBatter.PitchCall.Ball.sum": {
+            "value": 240.0,
+            "min": 0.0,
+            "max": 281.0,
+            "count": 150
+        },
+        "BaseballBatter.PitchCall.CalledStrike.mean": {
+            "value": 0.17277486910994763,
+            "min": 0.0,
+            "max": 0.32571428571428573,
+            "count": 150
+        },
+        "BaseballBatter.PitchCall.CalledStrike.sum": {
+            "value": 132.0,
+            "min": 0.0,
+            "max": 228.0,
+            "count": 150
+        },
+        "BaseballBatter.PitchCall.SwingingStrike.mean": {
+            "value": 0.31675392670157065,
+            "min": 0.20773638968481375,
+            "max": 0.9998391507157793,
+            "count": 150
+        },
+        "BaseballBatter.PitchCall.SwingingStrike.sum": {
+            "value": 242.0,
+            "min": 145.0,
+            "max": 6216.0,
+            "count": 150
+        },
+        "BaseballBatter.PitchCall.Foul.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0074487895716946,
+            "count": 150
+        },
+        "BaseballBatter.PitchCall.Foul.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 9.0,
+            "count": 150
+        },
+        "BaseballBatter.PitchCall.InPlay.mean": {
+            "value": 0.19633507853403143,
+            "min": 0.00016084928422068523,
+            "max": 0.2073976221928666,
+            "count": 150
+        },
+        "BaseballBatter.PitchCall.InPlay.sum": {
+            "value": 150.0,
+            "min": 1.0,
+            "max": 160.0,
+            "count": 150
+        },
+        "BaseballBatter.PlateDiscipline.ZoneRate.mean": {
+            "value": 0.5261780104712042,
+            "min": 0.4497991967871486,
+            "max": 0.5644090305444888,
+            "count": 150
+        },
+        "BaseballBatter.PlateDiscipline.ZoneRate.sum": {
+            "value": 402.0,
+            "min": 336.0,
+            "max": 3193.0,
+            "count": 150
+        },
+        "BaseballBatter.PlateDiscipline.SwingRate.mean": {
+            "value": 0.5130890052356021,
+            "min": 0.3022922636103152,
+            "max": 1.0,
+            "count": 150
+        },
+        "BaseballBatter.PlateDiscipline.SwingRate.sum": {
+            "value": 392.0,
+            "min": 211.0,
+            "max": 6217.0,
+            "count": 150
+        },
+        "BaseballBatter.PlateDiscipline.ChaseRate.mean": {
+            "value": 0.3370165745856354,
+            "min": 0.22580645161290322,
+            "max": 1.0,
+            "count": 150
+        },
+        "BaseballBatter.PlateDiscipline.ChaseRate.sum": {
+            "value": 122.0,
+            "min": 77.0,
+            "max": 3024.0,
+            "count": 150
+        },
+        "BaseballBatter.PlateDiscipline.ContactRate.mean": {
+            "value": 0.3826530612244898,
+            "min": 0.00016084928422068523,
+            "max": 0.438953488372093,
+            "count": 150
+        },
+        "BaseballBatter.PlateDiscipline.ContactRate.sum": {
+            "value": 150.0,
+            "min": 1.0,
+            "max": 160.0,
+            "count": 150
+        },
+        "BaseballBatter.Pitch.Speed(km.h).mean": {
+            "value": 134.95791241511,
+            "min": 134.2286114951437,
+            "max": 135.98534890966476,
+            "count": 150
+        },
+        "BaseballBatter.Pitch.Speed(km.h).sum": {
+            "value": 103107.84508514404,
+            "min": 94136.28684234619,
+            "max": 840288.3515930176,
+            "count": 150
+        },
+        "BaseballBatter.Swing.TimingError(ms).mean": {
+            "value": 6.887598994435097,
+            "min": -343.66176534907044,
+            "max": 19.632795006468676,
+            "count": 150
+        },
+        "BaseballBatter.Swing.TimingError(ms).sum": {
+            "value": 2699.9388058185577,
+            "min": -2136545.195175171,
+            "max": 5418.651421785355,
+            "count": 150
+        },
+        "BaseballBatter.Swing.Bat-BallDistance(cm).mean": {
+            "value": 16.09970573624786,
+            "min": 14.713558195682054,
+            "max": 649.7751822368075,
+            "count": 150
+        },
+        "BaseballBatter.Swing.Bat-BallDistance(cm).sum": {
+            "value": 6311.084648609161,
+            "min": 4507.2118945121765,
+            "max": 4039652.3079662323,
+            "count": 150
+        },
+        "BaseballBatter.BatterReward.Contact.mean": {
+            "value": 0.09816753926701571,
+            "min": 8.042464211034261e-05,
+            "max": 0.1036988110964333,
+            "count": 150
+        },
+        "BaseballBatter.BatterReward.Contact.sum": {
+            "value": 75.0,
+            "min": 0.5,
+            "max": 80.0,
+            "count": 150
+        },
+        "BaseballBatter.BatterReward.Miss.mean": {
+            "value": -0.4895287958115183,
+            "min": -0.9998391507157793,
+            "max": -0.45108695652173914,
+            "count": 150
+        },
+        "BaseballBatter.BatterReward.Miss.sum": {
+            "value": -374.0,
+            "min": -6216.0,
+            "max": -332.0,
+            "count": 150
+        },
+        "BaseballBatter.BatterReward.ExitSpeed.mean": {
+            "value": 0.05764466843412974,
+            "min": 0.0,
+            "max": 0.0640045695999847,
+            "count": 150
+        },
+        "BaseballBatter.BatterReward.ExitSpeed.sum": {
+            "value": 44.040526683675125,
+            "min": 0.0,
+            "max": 48.323450047988445,
+            "count": 150
+        },
+        "BaseballBatter.BatterReward.PopFly.mean": {
+            "value": -0.017264427626944336,
+            "min": -0.02114944190052122,
+            "max": 0.0,
+            "count": 150
+        },
+        "BaseballBatter.BatterReward.PopFly.sum": {
+            "value": -13.190022706985474,
+            "min": -15.967828634893522,
+            "max": 0.0,
+            "count": 150
+        },
+        "BaseballBatter.BatterReward.Foul.mean": {
+            "value": 0.0,
+            "min": -0.0111731843575419,
+            "max": 0.0,
+            "count": 150
+        },
+        "BaseballBatter.BatterReward.Foul.sum": {
+            "value": 0.0,
+            "min": -13.5,
+            "max": 0.0,
+            "count": 150
+        },
+        "BaseballBatter.BatterReward.HomeRun.mean": {
+            "value": 0.03534031413612566,
+            "min": 0.0,
+            "max": 0.06340819022457067,
+            "count": 150
+        },
+        "BaseballBatter.BatterReward.HomeRun.sum": {
+            "value": 27.0,
+            "min": 0.0,
+            "max": 48.0,
+            "count": 150
+        },
+        "BaseballBatter.BatterReward.PitchTotal.mean": {
+            "value": -0.3156407017124261,
+            "min": -0.999758726073669,
+            "max": -0.2573537527338455,
+            "count": 150
+        },
+        "BaseballBatter.BatterReward.PitchTotal.sum": {
+            "value": -241.14949610829353,
+            "min": -6215.5,
+            "max": -195.58885207772255,
+            "count": 150
+        },
+        "BaseballBatter.Env.AbortedPlay.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 150
+        },
+        "BaseballBatter.Env.AbortedPlay.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 150
+        },
+        "BaseballBatter.PlateDiscipline.ZoneSwingRate.mean": {
+            "value": 0.6716417910447762,
+            "min": 0.3753501400560224,
+            "max": 1.0,
+            "count": 150
+        },
+        "BaseballBatter.PlateDiscipline.ZoneSwingRate.sum": {
+            "value": 270.0,
+            "min": 134.0,
+            "max": 3193.0,
+            "count": 150
+        },
+        "BaseballBatter.Environment.EpisodeLength.mean": {
+            "value": 79.3855421686747,
+            "min": 8.658619024625784,
+            "max": 109.56666666666666,
+            "count": 150
+        },
+        "BaseballBatter.Environment.EpisodeLength.sum": {
+            "value": 19767.0,
+            "min": 17932.0,
+            "max": 20090.0,
+            "count": 150
+        },
+        "BaseballBatter.PlateAppearance.Strikeout.mean": {
+            "value": 0.3293172690763052,
+            "min": 0.29004329004329005,
+            "max": 0.9995171414775471,
+            "count": 150
+        },
+        "BaseballBatter.PlateAppearance.Strikeout.sum": {
+            "value": 82.0,
+            "min": 67.0,
+            "max": 2070.0,
+            "count": 150
+        },
+        "BaseballBatter.PlateAppearance.Walk.mean": {
+            "value": 0.06827309236947791,
+            "min": 0.0,
+            "max": 0.14136125654450263,
+            "count": 150
+        },
+        "BaseballBatter.PlateAppearance.Walk.sum": {
+            "value": 17.0,
+            "min": 0.0,
+            "max": 27.0,
+            "count": 150
+        },
+        "BaseballBatter.PlateAppearance.InPlay.mean": {
+            "value": 0.6024096385542169,
+            "min": 0.0004828585224529213,
+            "max": 0.6406926406926406,
+            "count": 150
+        },
+        "BaseballBatter.PlateAppearance.InPlay.sum": {
+            "value": 150.0,
+            "min": 1.0,
+            "max": 160.0,
+            "count": 150
+        },
+        "BaseballBatter.PlateAppearance.Pitches.mean": {
+            "value": 3.072289156626506,
+            "min": 2.9932432432432434,
+            "max": 3.8961748633879782,
+            "count": 150
+        },
+        "BaseballBatter.PlateAppearance.Pitches.sum": {
+            "value": 765.0,
+            "min": 696.0,
+            "max": 6213.0,
+            "count": 150
+        },
+        "BaseballBatter.BatterReward.Outcome.mean": {
+            "value": -0.1706827309236948,
+            "min": -0.9995171414775471,
+            "max": -0.0982532751091703,
+            "count": 150
+        },
+        "BaseballBatter.BatterReward.Outcome.sum": {
+            "value": -42.5,
+            "min": -2070.0,
+            "max": -22.5,
+            "count": 150
+        },
+        "BaseballBatter.Step.mean": {
+            "value": 2999992.0,
+            "min": 19990.0,
+            "max": 2999992.0,
+            "count": 150
+        },
+        "BaseballBatter.Step.sum": {
+            "value": 2999992.0,
+            "min": 19990.0,
+            "max": 2999992.0,
+            "count": 150
+        },
+        "BaseballBatter.Policy.ExtrinsicValueEstimate.mean": {
+            "value": -0.7016469836235046,
+            "min": -2.8194777965545654,
+            "max": -0.6361904144287109,
+            "count": 150
+        },
+        "BaseballBatter.Policy.ExtrinsicValueEstimate.sum": {
+            "value": -303.8131408691406,
+            "min": -4279.96728515625,
+            "max": -268.2576904296875,
+            "count": 150
+        },
+        "BaseballBatter.Environment.CumulativeReward.mean": {
+            "value": -1.1497963546745238,
+            "min": -3.998792270531401,
+            "max": -0.8979051307332321,
+            "count": 150
+        },
+        "BaseballBatter.Environment.CumulativeReward.sum": {
+            "value": -285.1494959592819,
+            "min": -8277.5,
+            "max": -219.08885189890862,
+            "count": 150
+        },
+        "BaseballBatter.Policy.ExtrinsicReward.mean": {
+            "value": -1.1497963546745238,
+            "min": -3.998792270531401,
+            "max": -0.8979051307332321,
+            "count": 150
+        },
+        "BaseballBatter.Policy.ExtrinsicReward.sum": {
+            "value": -285.1494959592819,
+            "min": -8277.5,
+            "max": -219.08885189890862,
+            "count": 150
+        },
+        "BaseballBatter.Losses.PolicyLoss.mean": {
+            "value": 0.04814884174265899,
+            "min": 0.04332488560273002,
+            "max": 0.05631851418875158,
+            "count": 150
+        },
+        "BaseballBatter.Losses.PolicyLoss.sum": {
+            "value": 0.09629768348531798,
+            "min": 0.04332488560273002,
+            "max": 0.1124932873256815,
+            "count": 150
+        },
+        "BaseballBatter.Losses.ValueLoss.mean": {
+            "value": 0.46223911494016645,
+            "min": 0.07901463283148284,
+            "max": 0.6487184184292952,
+            "count": 150
+        },
+        "BaseballBatter.Losses.ValueLoss.sum": {
+            "value": 0.9244782298803329,
+            "min": 0.15802926566296568,
+            "max": 1.1946835252145926,
+            "count": 150
+        },
+        "BaseballBatter.Policy.LearningRate.mean": {
+            "value": 6.935997688333302e-07,
+            "min": 6.935997688333302e-07,
+            "max": 0.00029897520034159996,
+            "count": 150
+        },
+        "BaseballBatter.Policy.LearningRate.sum": {
+            "value": 1.3871995376666604e-06,
+            "min": 1.3871995376666604e-06,
+            "max": 0.0005948761017079666,
+            "count": 150
+        },
+        "BaseballBatter.Policy.Epsilon.mean": {
+            "value": 0.10023116666666668,
+            "min": 0.10023116666666668,
+            "max": 0.19965840000000007,
+            "count": 150
+        },
+        "BaseballBatter.Policy.Epsilon.sum": {
+            "value": 0.20046233333333335,
+            "min": 0.11032883333333338,
+            "max": 0.39829203333333324,
+            "count": 150
+        },
+        "BaseballBatter.Policy.Beta.mean": {
+            "value": 2.1535216666666616e-05,
+            "min": 2.1535216666666616e-05,
+            "max": 0.004982954159999999,
+            "count": 150
+        },
+        "BaseballBatter.Policy.Beta.sum": {
+            "value": 4.307043333333323e-05,
+            "min": 4.307043333333323e-05,
+            "max": 0.009914772463333332,
+            "count": 150
+        },
+        "BaseballBatter.BattedBall.ExitSpeed(km.h).mean": {
+            "value": 109.04784678141276,
+            "min": 52.191001892089844,
+            "max": 112.55962533744977,
+            "count": 150
+        },
+        "BaseballBatter.BattedBall.ExitSpeed(km.h).sum": {
+            "value": 16357.177017211914,
+            "min": 52.191001892089844,
+            "max": 16834.300117492676,
+            "count": 150
+        },
+        "BaseballBatter.BattedBall.LaunchAngle(deg).mean": {
+            "value": 8.343764870961508,
+            "min": -3.785964130423963,
+            "max": 15.9020414352417,
+            "count": 150
+        },
+        "BaseballBatter.BattedBall.LaunchAngle(deg).sum": {
+            "value": 1251.564730644226,
+            "min": -431.3836240917444,
+            "max": 1845.830016374588,
+            "count": 150
+        },
+        "BaseballBatter.BattedBall.SprayAngle(deg).mean": {
+            "value": -12.159178130403161,
+            "min": -52.07511281967163,
+            "max": 12.285760612645444,
+            "count": 150
+        },
+        "BaseballBatter.BattedBall.SprayAngle(deg).sum": {
+            "value": -1823.8767195604742,
+            "min": -1823.8767195604742,
+            "max": 1004.3534048423171,
+            "count": 150
+        },
+        "BaseballBatter.BattedBall.Fair.mean": {
+            "value": 1.0,
+            "min": 0.25,
+            "max": 1.0,
+            "count": 150
+        },
+        "BaseballBatter.BattedBall.Fair.sum": {
+            "value": 150.0,
+            "min": 1.0,
+            "max": 160.0,
+            "count": 150
+        },
+        "BaseballBatter.BattedBall.HomeRun.mean": {
+            "value": 0.06,
+            "min": 0.0,
+            "max": 0.12698412698412698,
+            "count": 150
+        },
+        "BaseballBatter.BattedBall.HomeRun.sum": {
+            "value": 9.0,
+            "min": 0.0,
+            "max": 16.0,
+            "count": 150
+        },
+        "BaseballBatter.BattedBall.Distance(m).mean": {
+            "value": 46.11976187864939,
+            "min": 8.428023338317871,
+            "max": 52.12576978534892,
+            "count": 150
+        },
+        "BaseballBatter.BattedBall.Distance(m).sum": {
+            "value": 6917.964281797409,
+            "min": 8.428023338317871,
+            "max": 7193.356230378151,
+            "count": 150
+        },
+        "BaseballBatter.IsTraining.mean": {
+            "value": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "count": 150
+        },
+        "BaseballBatter.IsTraining.sum": {
+            "value": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "count": 150
+        }
+    },
+    "metadata": {
+        "timer_format_version": "0.1.0",
+        "start_time_seconds": "1790688858",
+        "python_version": "3.10.12 | packaged by Anaconda, Inc. | (main, Jul  5 2023, 19:01:18) [MSC v.1916 64 bit (AMD64)]",
+        "command_line_arguments": "C:\\miniconda3\\envs\\mlagents\\Scripts\\mlagents-learn config\\stage1_batter.yaml --run-id=stage1_batter",
+        "mlagents_version": "1.1.0",
+        "mlagents_envs_version": "1.1.0",
+        "communication_protocol_version": "1.5.0",
+        "pytorch_version": "2.7.1+cu128",
+        "numpy_version": "1.23.5",
+        "end_time_seconds": "1790694847"
+    },
+    "total": 5989.11438470002,
+    "count": 1,
+    "self": 0.01094180007930845,
+    "children": {
+        "run_training.setup": {
+            "total": 0.0731173999956809,
+            "count": 1,
+            "self": 0.0731173999956809
+        },
+        "TrainerController.start_learning": {
+            "total": 5989.030325499945,
+            "count": 1,
+            "self": 13.790634800854605,
+            "children": {
+                "TrainerController._reset_env": {
+                    "total": 34.74517000000924,
+                    "count": 1,
+                    "self": 34.74517000000924
+                },
+                "TrainerController.advance": {
+                    "total": 5940.44849769905,
+                    "count": 1503011,
+                    "self": 12.453200573741924,
+                    "children": {
+                        "env_step": {
+                            "total": 5327.305001570843,
+                            "count": 1503011,
+                            "self": 3033.9483279085835,
+                            "children": {
+                                "SubprocessEnvManager._take_step": {
+                                    "total": 2284.444396339939,
+                                    "count": 1503011,
+                                    "self": 40.919047258386854,
+                                    "children": {
+                                        "TorchPolicy.evaluate": {
+                                            "total": 2243.525349081552,
+                                            "count": 1494943,
+                                            "self": 2243.525349081552
+                                        }
+                                    }
+                                },
+                                "workers": {
+                                    "total": 8.912277322320733,
+                                    "count": 1503011,
+                                    "self": 0.0,
+                                    "children": {
+                                        "worker_root": {
+                                            "total": 5937.649472515332,
+                                            "count": 1503011,
+                                            "is_parallel": true,
+                                            "self": 3597.0997318832087,
+                                            "children": {
+                                                "steps_from_proto": {
+                                                    "total": 0.0003695999621413648,
+                                                    "count": 1,
+                                                    "is_parallel": true,
+                                                    "self": 0.00013609998859465122,
+                                                    "children": {
+                                                        "_process_rank_one_or_two_observation": {
+                                                            "total": 0.0002334999735467136,
+                                                            "count": 4,
+                                                            "is_parallel": true,
+                                                            "self": 0.0002334999735467136
+                                                        }
+                                                    }
+                                                },
+                                                "UnityEnvironment.step": {
+                                                    "total": 2340.5493710321607,
+                                                    "count": 1503011,
+                                                    "is_parallel": true,
+                                                    "self": 86.04867983009899,
+                                                    "children": {
+                                                        "UnityEnvironment._generate_step_input": {
+                                                            "total": 58.393447420035955,
+                                                            "count": 1503011,
+                                                            "is_parallel": true,
+                                                            "self": 58.393447420035955
+                                                        },
+                                                        "communicator.exchange": {
+                                                            "total": 1958.2492433315492,
+                                                            "count": 1503011,
+                                                            "is_parallel": true,
+                                                            "self": 1958.2492433315492
+                                                        },
+                                                        "steps_from_proto": {
+                                                            "total": 237.85800045047654,
+                                                            "count": 1503011,
+                                                            "is_parallel": true,
+                                                            "self": 96.92540133639704,
+                                                            "children": {
+                                                                "_process_rank_one_or_two_observation": {
+                                                                    "total": 140.9325991140795,
+                                                                    "count": 6012044,
+                                                                    "is_parallel": true,
+                                                                    "self": 140.9325991140795
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trainer_advance": {
+                            "total": 600.6902955544647,
+                            "count": 1503011,
+                            "self": 17.392463536467403,
+                            "children": {
+                                "process_trajectory": {
+                                    "total": 170.23086951702135,
+                                    "count": 1503011,
+                                    "self": 169.56695411691908,
+                                    "children": {
+                                        "RLTrainer._checkpoint": {
+                                            "total": 0.6639154001022689,
+                                            "count": 15,
+                                            "self": 0.6639154001022689
+                                        }
+                                    }
+                                },
+                                "_update_policy": {
+                                    "total": 413.06696250097593,
+                                    "count": 292,
+                                    "self": 195.01818541035755,
+                                    "children": {
+                                        "TorchPPOOptimizer.update": {
+                                            "total": 218.0487770906184,
+                                            "count": 35040,
+                                            "self": 218.0487770906184
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "trainer_threads": {
+                    "total": 5.00003807246685e-07,
+                    "count": 1,
+                    "self": 5.00003807246685e-07
+                },
+                "TrainerController._save_models": {
+                    "total": 0.046022500027902424,
+                    "count": 1,
+                    "self": 0.00977570004761219,
+                    "children": {
+                        "RLTrainer._checkpoint": {
+                            "total": 0.036246799980290234,
+                            "count": 1,
+                            "self": 0.036246799980290234
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

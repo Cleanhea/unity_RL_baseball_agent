@@ -75,6 +75,16 @@ mlagents-learn Training/config/stage1_batter.yaml --run-id=stage1_batter --resul
 
 "Start training by pressing the Play button"이 나오면 Unity Editor에서 해당 단계 씬을 열고 Play한다. 자동 실행과 별도로 수동 학습할 때 쓴다. 2·3단계 설정은 이전 단계 결과(`Training/results/<run-id>/<Behavior>/checkpoint.pt`)를 `init_path`로 읽는다. 그래서 1 → 2 → 3 순서로, 위 run-id 그대로 학습한다. run-id를 바꾸면 설정 파일의 `init_path`도 고친다.
 
+### 기존 2단계 학습 재개
+
+`--resume`은 **타자와 투수 각각의** `Training/results/stage2_batter_pitcher/<Behavior>/checkpoint.pt`를 읽는다. 두 파일이 모두 있어야 한다. 설치된 ML-Agents 1.1.0은 `--resume` 중에도 YAML의 `init_path`가 있으면 그 경로를 우선 읽으므로, 2단계 신규 학습용 설정 대신 `config/stage2_batter_pitcher_resume.yaml`을 쓴다. 두 설정의 학습 값은 같고 재개용 설정에는 타자의 `init_path`만 없다. 결과 폴더를 백업한 다음 저장된 스텝을 확인하고 실행한다.
+
+```
+mlagents-learn Training/config/stage2_batter_pitcher_resume.yaml --run-id=stage2_batter_pitcher --results-dir=Training/results --resume
+```
+
+학습기가 Editor 연결을 기다리면 `Stage2_BatterPitcher` 씬을 Play한다. `--force`는 기존 결과를 덮어쓰므로 복구에 사용하지 않는다. 종료할 때는 Ctrl+C를 한 번 누르고 **두 Behavior의 저장 완료 메시지**가 나올 때까지 기다린다. 투수의 `checkpoint_interval`은 20,000스텝이므로 그 이전에 프로세스가 강제로 종료되면 재개용 파일이 없을 수 있다. `auto_curriculum.py`는 결과가 이미 있는 run-id의 자동 재개를 지원하지 않는다.
+
 - 진행 그래프: `tensorboard --logdir Training/results`
   - 보상·손실 외에 야구 지표도 나온다: 삼진·볼넷률, 스윙·컨택률, 타구 속도·발사각, 구종 비율, 3단계 플레이 결과 등.
   - 목록과 뜻은 [TensorBoard 지표](../docs/training-curriculum.md#tensorboard-지표)에 있다.

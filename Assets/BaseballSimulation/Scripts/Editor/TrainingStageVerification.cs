@@ -17,6 +17,8 @@ namespace BaseballSimulation.Editor
     {
         private const int Plays = 12;
         private const int SpreadSamples = 20000;
+        /// <summary>격자 바깥 칸 투구 중 입체 존을 스쳐 스트라이크가 되어도 되는 최대 비율. 넘으면 바깥 칸이 볼이라는 설계가 깨진 것이다.</summary>
+        private const float MaxOuterCellStrikeRate = 0.05f;
 
         [MenuItem("Tools/Baseball Simulation/Training/Verify Open Training Scene (Paused Play Mode)", false, 40)]
         public static void RunMenu() => Debug.Log(Run());
@@ -210,7 +212,7 @@ namespace BaseballSimulation.Editor
             float cellWidth = StrikeZone.PlateWidth / 3f, cellHeight = (config.StrikeZoneTop - config.StrikeZoneBottom) / 3f;
             Require(low.Type == PitchType.Curve && Mathf.Abs(low.Speed - curve.MinSpeed) < 1e-4f && low.PlateLocation == center, "min speed at the center cell");
             Require(Mathf.Abs(high.Speed - curve.MaxSpeed) < 1e-4f && Mathf.Abs(high.PlateLocation.x - 2f * cellWidth) < 1e-4f &&
-                Mathf.Abs(high.PlateLocation.y - (center.y + 2f * cellHeight)) < 1e-4f, "max speed at the top first-base corner cell");
+                Mathf.Abs(high.PlateLocation.y - (center.y + 2f * cellHeight + PitcherAgent.TopRowLift)) < 1e-4f, "max speed at the top first-base corner cell (top row lifted)");
             PitchTypeProfile changeup = config.GetPitchProfile(PitchType.Changeup);
             Require(bad.Type == PitchType.Changeup && Mathf.Abs(bad.Speed - 0.5f * (changeup.MinSpeed + changeup.MaxSpeed)) < 1e-4f &&
                 bad.PlateLocation == PitcherAgent.CellLocation(last, 0, config, center), "non-finite and out-of-range actions are clamped");
@@ -232,7 +234,7 @@ namespace BaseballSimulation.Editor
                             Mathf.Max(config.StrikeZoneBottom - cell.y, cell.y - config.StrikeZoneTop)) - radius);
                 }
             report.AppendLine($"PASS pitcher action mapping: 5 types, 5x5 target cells x {-2f * cellWidth:F3}..{2f * cellWidth:F3} m, " +
-                $"height {center.y - 2f * cellHeight:F3}..{center.y + 2f * cellHeight:F3} m; inner 3x3 centers {innerClearance * 100f:F1}+ cm inside the zone, " +
+                $"height {center.y - 2f * cellHeight:F3}..{center.y + 2f * cellHeight + PitcherAgent.TopRowLift:F3} m (top row +{PitcherAgent.TopRowLift * 100f:F0} cm); inner 3x3 centers {innerClearance * 100f:F1}+ cm inside the zone, " +
                 $"outer 16 ball edges {outerClearance * 100f:F1}+ cm outside.");
 
             // 2) 구종별 변화량: 같은 발사 속도에서 회전 없는 공과의 홈플레이트 통과점 차이(Statcast pfx 방식).
@@ -284,9 +286,11 @@ namespace BaseballSimulation.Editor
             report.AppendLine($"PASS neutral pitch: {neutral.Type} {neutral.Speed * 3.6f:F1} km/h to zone center, called strike, pitcher {pitcher.LastPitchReward.Total:+0.0;-0.0}, batter {batter.LastPitchReward.Total:+0.0;-0.0}.");
 
             // 4) 실제 Director 투구: 5구종 × 격자 25칸, 구속 범위 가운데. 목표 통과 오차, 판정(안쪽 3×3 스트라이크, 바깥 16칸 볼),
-            //    투수 투구 보상을 확인한다. 구종 변화로 공이 플레이트 깊이를 지나는 동안 움직여도 판정이 바뀌지 않아야 한다.
+            //    투수 투구 보상을 확인한다. 바깥 칸이 플레이트 깊이를 지나며 입체 존을 스친 스트라이크는 판정이 존 검사를 따르면
+            //    허용하되 비율(MaxOuterCellStrikeRate)을 넘지 않아야 한다.
             float maxMiss = 0f;
-            int strikes = 0, balls = 0;
+            int strikes = 0, balls = 0, outerStrikes = 0;
+            var outerStrikeCells = new StringBuilder();
             foreach (PitchType type in (PitchType[])Enum.GetValues(typeof(PitchType)))
             {
                 PitchTypeProfile profile = config.GetPitchProfile(type);
@@ -309,15 +313,29 @@ namespace BaseballSimulation.Editor
                         }
                         else
                         {
-                            Require(call.Call == PitchCall.Ball && pitcher.LastPitchReward.Ball == PitcherRewardTracker.BallPenalty,
-                                $"{type} at outer cell ({column}, {row}) is a ball (got {call.Call})");
-                            balls++;
+                            // 바깥 칸도 공이 플레이트를 지나며 입체 존에 닿으면 규칙상 스트라이크다(내려오는 공이 존 뒤쪽 윗면을 스침).
+                            // 판정·보상이 존 통과 검사를 따르면 허용하되, 바깥 칸이 대체로 볼이라는 설계가 유지되는지 비율로 본다.
+                            Require(call.Call == (call.InZone ? PitchCall.CalledStrike : PitchCall.Ball),
+                                $"{type} at outer cell ({column}, {row}) call follows the zone test (in zone {call.InZone}, got {call.Call})");
+                            Require(call.InZone ? pitcher.LastPitchReward.Strike == PitcherRewardTracker.StrikeReward
+                                    : pitcher.LastPitchReward.Ball == PitcherRewardTracker.BallPenalty,
+                                $"{type} at outer cell ({column}, {row}) pitch reward matches its call");
+                            if (!call.InZone) balls++;
+                            else
+                            {
+                                outerStrikes++;
+                                outerStrikeCells.Append($"{type} ({column}, {row}); ");
+                            }
                         }
                         RequirePitchReward(pitcher);
                     }
             }
-            report.AppendLine($"PASS director pitches: {strikes + balls} (5 types x 25 cells), max plate miss {maxMiss * 100f:F2} cm, " +
-                $"{strikes} called strikes (inner cells), {balls} balls (outer cells), pitch rewards match.");
+            float outerStrikeRate = outerStrikes / (float)(balls + outerStrikes);
+            Require(outerStrikeRate <= MaxOuterCellStrikeRate,
+                $"outer-cell strikes {outerStrikeRate:P1} stay at or below {MaxOuterCellStrikeRate:P0} ({outerStrikeCells})");
+            report.AppendLine($"PASS director pitches: {strikes + balls + outerStrikes} (5 types x 25 cells), max plate miss {maxMiss * 100f:F2} cm, " +
+                $"{strikes} called strikes (inner cells), {balls} balls and {outerStrikes} zone-clipping strikes (outer cells), pitch rewards match." +
+                (outerStrikes > 0 ? $" Outer strikes: {outerStrikeCells}" : string.Empty));
 
             // 5) 볼카운트: 볼 4개 = 볼넷(타자 +1, 투수 -1), 스트라이크 3개 = 삼진(타자 -1, 투수 +1). 에피소드는 타석 단위다.
             BatterAgentVerification.FinishCurrentPlateAppearance(controller);

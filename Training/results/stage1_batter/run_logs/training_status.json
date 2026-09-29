@@ -1,0 +1,65 @@
+{
+    "BaseballBatter": {
+        "checkpoints": [
+            {
+                "steps": 2399957,
+                "file_path": "results\\stage1_batter\\BaseballBatter\\BaseballBatter-2399957.onnx",
+                "reward": -1.4811199005992932,
+                "creation_time": 1790693607.5217032,
+                "auxillary_file_paths": [
+                    "results\\stage1_batter\\BaseballBatter\\BaseballBatter-2399957.pt"
+                ]
+            },
+            {
+                "steps": 2599979,
+                "file_path": "results\\stage1_batter\\BaseballBatter\\BaseballBatter-2599979.onnx",
+                "reward": -1.4367622280120849,
+                "creation_time": 1790694011.3820155,
+                "auxillary_file_paths": [
+                    "results\\stage1_batter\\BaseballBatter\\BaseballBatter-2599979.pt"
+                ]
+            },
+            {
+                "steps": 2799952,
+                "file_path": "results\\stage1_batter\\BaseballBatter\\BaseballBatter-2799952.onnx",
+                "reward": -1.7714183601813438,
+                "creation_time": 1790694432.24265,
+                "auxillary_file_paths": [
+                    "results\\stage1_batter\\BaseballBatter\\BaseballBatter-2799952.pt"
+                ]
+            },
+            {
+                "steps": 2999992,
+                "file_path": "results\\stage1_batter\\BaseballBatter\\BaseballBatter-2999992.onnx",
+                "reward": -1.3390812692434892,
+                "creation_time": 1790694847.5635889,
+                "auxillary_file_paths": [
+                    "results\\stage1_batter\\BaseballBatter\\BaseballBatter-2999992.pt"
+                ]
+            },
+            {
+                "steps": 3000013,
+                "file_path": "results\\stage1_batter\\BaseballBatter\\BaseballBatter-3000013.onnx",
+                "reward": -1.2624528830250104,
+                "creation_time": 1790694847.6019316,
+                "auxillary_file_paths": [
+                    "results\\stage1_batter\\BaseballBatter\\BaseballBatter-3000013.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 3000013,
+            "file_path": "results\\stage1_batter\\BaseballBatter.onnx",
+            "reward": -1.2624528830250104,
+            "creation_time": 1790694847.6019316,
+            "auxillary_file_paths": [
+                "results\\stage1_batter\\BaseballBatter\\BaseballBatter-3000013.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.1.0",
+        "torch_version": "2.7.1+cu128"
+    }
+}

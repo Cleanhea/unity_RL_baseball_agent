@@ -27,6 +27,12 @@ namespace BaseballSimulation
         public const int LocationCells = 5;
         /// <summary>격자 가운데 칸(존 중앙). 중립 행동이다.</summary>
         public const int CenterCell = LocationCells / 2;
+        /// <summary>
+        /// 맨 윗줄 바깥 칸만 한 칸 간격보다 더 올리는 높이(m). 내려오며 들어오는 공은 플레이트 뒤쪽에서 입체 존 윗면에 닿으므로,
+        /// 앞 모서리 여유만으로는 느린 변화구가 스트라이크가 된다. 실측(2026-09-29) 최악은 커브 110 km/h 가운데 열로
+        /// 목표 1.152 m부터 볼이었다. 기본 설정의 윗줄 1.122 m에 여유 2 cm를 더해 5 cm 올린다.
+        /// </summary>
+        public const float TopRowLift = 0.05f;
 
         [SerializeField] private PlayDirector director;
 
@@ -173,13 +179,16 @@ namespace BaseballSimulation
 
         /// <summary>
         /// 격자 칸의 홈플레이트 목표 위치. 칸 간격은 플레이트 폭·존 높이의 1/3이다. 가운데 칸이 존 중앙이고,
-        /// 바깥 칸은 존 가장자리 칸 중앙에서 한 칸 더 나간 곳이다(기본 설정에서 공 가장자리가 좌우 3.5 cm, 위아래 5.5 cm 존 밖).
+        /// 바깥 칸은 존 가장자리 칸 중앙에서 한 칸 더 나간 곳이다(기본 설정에서 공 가장자리가 좌우 3.5 cm, 아래 5.5 cm 존 밖).
+        /// 맨 윗줄은 <see cref="TopRowLift"/>만큼 더 올라가 공 가장자리가 앞 모서리에서 10.5 cm 존 위다.
         /// </summary>
         public static Vector2 CellLocation(int column, int row, BaseballEnvironmentConfig config, Vector2 zoneCenter)
         {
             int x = Mathf.Clamp(column, 0, LocationCells - 1) - CenterCell;
             int y = Mathf.Clamp(row, 0, LocationCells - 1) - CenterCell;
-            return new Vector2(x * StrikeZone.PlateWidth / 3f, zoneCenter.y + y * (config.StrikeZoneTop - config.StrikeZoneBottom) / 3f);
+            float height = zoneCenter.y + y * (config.StrikeZoneTop - config.StrikeZoneBottom) / 3f;
+            if (y == CenterCell) height += TopRowLift;
+            return new Vector2(x * StrikeZone.PlateWidth / 3f, height);
         }
 
         /// <summary>학습기·모델이 없을 때의 중립 행동: 포심 직구를 구속 범위 가운데로 존 중앙에 던진다.</summary>

@@ -1,0 +1,87 @@
+{
+    "BaseballBatter": {
+        "checkpoints": [
+            {
+                "steps": 172,
+                "file_path": "Training/results\\smoke_stage2_auto\\BaseballBatter\\BaseballBatter-172.onnx",
+                "reward": 0.6454927325248718,
+                "creation_time": 1790447657.6233351,
+                "auxillary_file_paths": [
+                    "Training/results\\smoke_stage2_auto\\BaseballBatter\\BaseballBatter-172.pt"
+                ]
+            },
+            {
+                "steps": 256,
+                "file_path": "Training/results\\smoke_stage2_auto\\BaseballBatter\\BaseballBatter-256.onnx",
+                "reward": -0.5158804506063461,
+                "creation_time": 1790447658.0552638,
+                "auxillary_file_paths": [
+                    "Training/results\\smoke_stage2_auto\\BaseballBatter\\BaseballBatter-256.pt"
+                ]
+            },
+            {
+                "steps": 384,
+                "file_path": "Training/results\\smoke_stage2_auto\\BaseballBatter\\BaseballBatter-384.onnx",
+                "reward": -1.677253633737564,
+                "creation_time": 1790447658.6903615,
+                "auxillary_file_paths": [
+                    "Training/results\\smoke_stage2_auto\\BaseballBatter\\BaseballBatter-384.pt"
+                ]
+            },
+            {
+                "steps": 462,
+                "file_path": "Training/results\\smoke_stage2_auto\\BaseballBatter\\BaseballBatter-462.onnx",
+                "reward": -1.6282713072640556,
+                "creation_time": 1790447658.9958868,
+                "auxillary_file_paths": [
+                    "Training/results\\smoke_stage2_auto\\BaseballBatter\\BaseballBatter-462.pt"
+                ]
+            },
+            {
+                "steps": 508,
+                "file_path": "Training/results\\smoke_stage2_auto\\BaseballBatter\\BaseballBatter-508.onnx",
+                "reward": -1.5231875479221344,
+                "creation_time": 1790447659.041787,
+                "auxillary_file_paths": [
+                    "Training/results\\smoke_stage2_auto\\BaseballBatter\\BaseballBatter-508.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 508,
+            "file_path": "Training/results\\smoke_stage2_auto\\BaseballBatter.onnx",
+            "reward": -1.5231875479221344,
+            "creation_time": 1790447659.041787,
+            "auxillary_file_paths": [
+                "Training/results\\smoke_stage2_auto\\BaseballBatter\\BaseballBatter-508.pt"
+            ]
+        }
+    },
+    "BaseballPitcher": {
+        "checkpoints": [
+            {
+                "steps": 21,
+                "file_path": "Training/results\\smoke_stage2_auto\\BaseballPitcher\\BaseballPitcher-21.onnx",
+                "reward": 0.4606875479221344,
+                "creation_time": 1790447659.0872073,
+                "auxillary_file_paths": [
+                    "Training/results\\smoke_stage2_auto\\BaseballPitcher\\BaseballPitcher-21.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 21,
+            "file_path": "Training/results\\smoke_stage2_auto\\BaseballPitcher.onnx",
+            "reward": 0.4606875479221344,
+            "creation_time": 1790447659.0872073,
+            "auxillary_file_paths": [
+                "Training/results\\smoke_stage2_auto\\BaseballPitcher\\BaseballPitcher-21.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.1.0",
+        "torch_version": "2.7.1+cu128"
+    }
+}

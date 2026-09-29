@@ -1,0 +1,5 @@
+{
+  "phase": "training_stage2",
+  "detail": "C:\\miniconda3\\envs\\mlagents\\Scripts\\mlagents-learn.exe C:\\MainScreen\\Dev\\GitDirectory\\unity_RL_baseball_agent\\Training\\config\\stage2_batter_pitcher.yaml --run-id=stage2_batter_pitcher --results-dir=C:\\MainScreen\\Dev\\GitDirectory\\unity_RL_baseball_agent\\Training\\results --env=C:\\MainScreen\\Dev\\GitDirectory\\unity_RL_baseball_agent\\Training\\builds\\Stage2_BatterPitcher\\Stage2_BatterPitcher.exe --no-graphics --base-port=5010",
+  "updated": "2026-09-27T19:39:11+09:00"
+}
