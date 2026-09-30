@@ -133,6 +133,8 @@
 | `Play/Live Time (s)` | 판정까지 끝난 인플레이 | 3 | 타구가 살아 있던 시간(수비 처리 속도) |
 | `Play End/Fly Out`·`Force Out`·`Tag Out`·`Runner Safe`·`Run Scored`·`Home Run`·`Ground Rule Double`·`Timeout` | 판정까지 끝난 인플레이 | 3 | 플레이 종료 원인 비율 |
 | `Half Inning/Runs` | 3아웃마다 | 3 | 반 이닝 득점. 무작위 상황으로 시작한 반 이닝은 상황을 정한 뒤의 득점이다 |
+| `Defense/Fielded` | 수비가 결정한 플레이마다(파울·평가 타석 포함) | 3 | 수비가 타구를 한 번이라도 잡은 비율. 수비 학습이 시작됐는지 가장 먼저 보는 값이다 |
+| `Defense Reward/Outcome`·`Shaping` | 수비가 결정한 플레이마다(파울·평가 타석 포함) | 3 | 수비 그룹의 결과 보상과 [보조 보상](fielding-agents.md#수비-보조-보상-2026-10-01) 합. `Environment/Group Cumulative Reward`에는 둘과 시간 감점이 모두 들어 있다. 보조 보상 합은 할인하지 않은 값이라 공·베이스에서 먼 상태가 길수록 오히려 커질 수 있다(검증: 제자리 수비 +1.01). 실력 지표로 쓰지 말고 수비 실력은 `Outcome`·`Fielded`·`Play/*`로 본다 |
 | `Env/Aborted Play` | 초기화한 투구마다 | 전체 | 투구 거부·시간 초과로 중단한 비율. 0이 정상이다 |
 | `Matchup/Batter Win`·`Pitcher Win`·`Draw` | Agent끼리 대결한 타석마다 | 2·3 | 타석 결과 보상(`Batter Reward/Outcome`)의 부호로 본 승패 비율. 셋의 합은 1이다 |
 | `Benchmark Batter/…`·`Benchmark Pitcher/…` | 고정 상대 평가 타석 | 2·3 | [고정 상대 평가](#고정-상대-평가-2026-09-27) 참고 |
@@ -142,7 +144,7 @@
 - 1·2단계는 수비가 없다. 인플레이 타구는 판정 직후 초기화해 출루 여부를 모르므로 `On Base`와 `Play` 지표가 없다.
 - 타격된 공은 플레이트를 지나지 않는다. 그래서 존 여부는 투구 목표 위치로 근사한다(실제 통과 오차는 3 cm 안).
 - 수비가 공중에서 잡은 타구는 페어/파울 판정 없이 인플레이가 된다. 그래서 `Batted Ball/Fair` 비율에서 빠진다.
-- 2단계부터 일반 지표(`Pitch Call`·`Plate Discipline`·`Pitch`·`Pitch Type`·`Batted Ball`·`Swing`·`Batter Reward`·`Plate Appearance`·`Play`·`Play End`·`Matchup`)는 **Agent끼리 대결한 타석만** 넣는다. 고정 상대 평가 타석은 `Benchmark` 묶음에만 들어간다. `Half Inning/Runs`와 `Env/Aborted Play`는 모든 타석을 넣는다.
+- 2단계부터 일반 지표(`Pitch Call`·`Plate Discipline`·`Pitch`·`Pitch Type`·`Batted Ball`·`Swing`·`Batter Reward`·`Plate Appearance`·`Play`·`Play End`·`Matchup`)는 **Agent끼리 대결한 타석만** 넣는다. 고정 상대 평가 타석은 `Benchmark` 묶음에만 들어간다. `Half Inning/Runs`, `Env/Aborted Play`, `Defense`·`Defense Reward`는 모든 타석을 넣는다. 평가 타석에서도 수비는 학습하기 때문이다.
 - `Matchup`: 2단계는 삼진이 투수 승, 볼넷·홈런·인정 2루타가 타자 승이다. 판정 순간 플레이가 끝나 결과 보상이 생기기 때문이다. 그 밖의 페어 타구는 수비가 없어 결과 보상이 0이므로 무승부다. 3단계는 타자 진루·득점과 아웃으로 정해진다. 예를 들어 단타는 +0.5로 타자 승이고, 희생플라이(1아웃 1득점)는 0으로 무승부다.
 
 ## 고정 상대 평가 (2026-09-27)

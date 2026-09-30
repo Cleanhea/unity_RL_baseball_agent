@@ -98,8 +98,9 @@ behaviors:
   BaseballFielder:
     trainer_type: poca
     hyperparameters:
-      batch_size: 1024
-      buffer_size: 20480
+      # Collect fewer live-ball decisions before the first update; contact can be rare early on.
+      batch_size: 256
+      buffer_size: 4096
       learning_rate: 3.0e-4
       beta: 5.0e-3
       epsilon: 0.2
@@ -112,10 +113,10 @@ behaviors:
       num_layers: 2
     reward_signals:
       extrinsic:
-        gamma: 0.99
+        gamma: 0.99  # keep equal to PlayOutcomeRewards.DefenseShapingGamma (fielder shaping reward)
         strength: 1.0
     keep_checkpoints: 5
     checkpoint_interval: 500000
     max_steps: 20000000
     time_horizon: 64
-    summary_freq: 50000
+    summary_freq: 2000

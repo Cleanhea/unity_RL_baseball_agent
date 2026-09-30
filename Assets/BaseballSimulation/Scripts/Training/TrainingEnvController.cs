@@ -98,6 +98,8 @@ namespace BaseballSimulation
         private int completedPlays;
         private int abortedPlays;
         private int plateAppearancePitches;
+        private float defensePotential;
+        private float defenseShaping;
 
         public TrainingStage Stage => stage;
         public PlayDirector Director => director;
@@ -121,7 +123,11 @@ namespace BaseballSimulation
         public bool LastPlayHadFielding { get; private set; }
         public PlaySummary LastPlaySummary { get; private set; }
         public float LastDefenseOutcomeReward { get; private set; }
+        /// <summary>마지막 수비 플레이에서 준 보조 보상의 합(<see cref="PlayOutcomeRewards.DefensePotential"/>).</summary>
+        public float LastDefenseShapingReward { get; private set; }
         public float LastRunnerOutcomeReward { get; private set; }
+        /// <summary>수비·주자가 새 결정을 내리는 고정 단계 간격.</summary>
+        public int FieldDecisionInterval => fieldDecisionInterval;
         public PlateAppearanceResult LastPlateAppearanceResult { get; private set; }
         public float LastBatterOutcomeReward { get; private set; }
         /// <summary>이번 타석의 상대. 새 타석을 시작할 때 정한다.</summary>
@@ -269,6 +275,7 @@ namespace BaseballSimulation
             pitchWaitSteps = 0;
             playSteps = 0;
             fieldSteps = 0;
+            defensePotential = defenseShaping = 0f;
             situationPending = UsesFielding && newPlateAppearance && situationRandom.NextDouble() < randomSituationProbability;
             situationSettling = false;
             if (newPlateAppearance) BeginOpponent();
@@ -366,7 +373,10 @@ namespace BaseballSimulation
             else if (playSteps > maxPlaySteps) AbortPlay();
         }
 
-        /// <summary>타구가 살아 있는 동안 수비 5명과 살아 있는 주자에게 결정을 요청한다. 사이 단계는 마지막 행동을 반복한다.</summary>
+        /// <summary>
+        /// 타구가 살아 있는 동안 수비 5명과 살아 있는 주자에게 결정을 요청한다. 사이 단계는 마지막 행동을 반복한다.
+        /// 수비 결정마다 보조 보상 γΦ(지금) − Φ(직전 결정)를 준다. 결정 전에 더한 보상은 직전 결정의 행동 결과로 전달된다.
+        /// </summary>
         private void StepFielding()
         {
             bool decide = fieldSteps % fieldDecisionInterval == 0;
@@ -375,6 +385,12 @@ namespace BaseballSimulation
                 // 타구 순간 살아 있는 주자만 이번 플레이의 주자 그룹에 넣는다.
                 foreach (RunnerAgent runner in runners)
                     if (runner.IsRunning) offense.RegisterAgent(runner);
+            }
+            if (decide)
+            {
+                float potential = PlayOutcomeRewards.DefensePotential(director);
+                if (fieldSteps > 0) AddDefenseShaping(PlayOutcomeRewards.DefenseShapingGamma * potential - defensePotential);
+                defensePotential = potential;
             }
             fieldSteps++;
             foreach (FielderAgent fielder in fielders)
@@ -442,8 +458,12 @@ namespace BaseballSimulation
                 LastRunnerOutcomeReward = runnersActed && resolved ? PlayOutcomeRewards.Runners(play) : 0f;
                 if (fieldersActed)
                 {
+                    // 끝난 상태의 포텐셜은 0이다. 그래야 보조 보상 합이 수비 행동과 무관해진다.
+                    AddDefenseShaping(-defensePotential);
+                    LastDefenseShapingReward = defenseShaping;
                     defense.AddGroupReward(LastDefenseOutcomeReward);
                     defense.EndGroupEpisode();
+                    stats.RecordDefensePlay(director.BattedBallFielded, LastDefenseOutcomeReward, defenseShaping);
                 }
                 if (runnersActed)
                 {
@@ -484,7 +504,13 @@ namespace BaseballSimulation
         {
             if (UsesFielding)
             {
-                if (fieldersActed) defense.GroupEpisodeInterrupted();
+                if (fieldersActed)
+                {
+                    // 중단은 끝이 아니라 마지막 관측에서 가치를 이어 받으므로, 지금 상태의 포텐셜로 마지막 차분을 준다.
+                    AddDefenseShaping(PlayOutcomeRewards.DefenseShapingGamma * PlayOutcomeRewards.DefensePotential(director) - defensePotential);
+                    LastDefenseShapingReward = defenseShaping;
+                    defense.GroupEpisodeInterrupted();
+                }
                 if (runnersActed) offense.GroupEpisodeInterrupted();
                 ClearOffense();
             }
@@ -502,6 +528,12 @@ namespace BaseballSimulation
         private void ClearOffense()
         {
             foreach (RunnerAgent runner in runners) offense.UnregisterAgent(runner);
+        }
+
+        private void AddDefenseShaping(float reward)
+        {
+            defense.AddGroupReward(reward);
+            defenseShaping += reward;
         }
     }
 }

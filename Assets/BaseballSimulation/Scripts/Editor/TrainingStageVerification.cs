@@ -483,7 +483,15 @@ namespace BaseballSimulation.Editor
             RequireStat(controller, "Play End/Runner Safe", 0f);
             RequireStat(controller, "Matchup/Pitcher Win", 1f);
             Require(Stat(controller, "Play/Live Time (s)") > 0f, "live time stat recorded");
+            RequireStat(controller, "Defense/Fielded", 1f);
+            RequireStat(controller, "Defense Reward/Outcome", controller.LastDefenseOutcomeReward);
+            RequireStat(controller, "Defense Reward/Shaping", controller.LastDefenseShapingReward);
+            Require(a.fieldedDecision > 0 && a.potentials[a.fieldedDecision] - a.potentials[a.fieldedDecision - 1] > 0.8f * PlayOutcomeRewards.DefenseFieldedValue,
+                "first fielding raises the defense potential by about the fielded value");
             report.AppendLine($"PASS A grounder to SS: {Describe(a.play)} at {a.seconds:F2} s, fielded by {a.fielder}, defense {controller.LastDefenseOutcomeReward:+0.00;-0.00}, runners {controller.LastRunnerOutcomeReward:+0.00;-0.00}, batter {controller.LastBatterOutcomeReward:+0.00;-0.00}.");
+            report.AppendLine($"PASS A defense shaping: potential {a.potentials[0]:+0.000;-0.000} at contact, " +
+                $"{a.potentials[a.fieldedDecision - 1]:+0.000;-0.000} → {a.potentials[a.fieldedDecision]:+0.000;-0.000} at the first fielding, " +
+                $"play sum {controller.LastDefenseShapingReward:+0.000;-0.000} over {a.potentials.Count} decisions.");
 
             var b = PlayScenario(controller, empty, ExitVelocity(-19f, 32f, 34f), null);
             Require(b.play.EndReason == PitchEndReason.FlyOut && b.play.Outs == 1, $"B fly ball to left-center is caught (got {Describe(b.play)})");
@@ -499,6 +507,17 @@ namespace BaseballSimulation.Editor
             RequireStat(controller, "Play End/Runner Safe", 1f);
             RequireStat(controller, "Matchup/Batter Win", 1f);
             report.AppendLine($"PASS C single up the middle: {Describe(c.play)} at {c.seconds:F2} s, fielded by {c.fielder}, defense {controller.LastDefenseOutcomeReward:+0.00;-0.00}, runners {controller.LastRunnerOutcomeReward:+0.00;-0.00}, batter {controller.LastBatterOutcomeReward:+0.00;-0.00}.");
+
+            // 보조 보상 방향: 같은 타구에서 공을 쫓고 1루를 덮는 스크립트 수비가 제자리 수비보다 첫 포구 전까지 보조 보상을 더 받는다.
+            var still = PlayScenario(controller, empty, ExitVelocity(0f, 8f, 34f), null, scriptedDefense: false);
+            RequireStat(controller, "Defense/Fielded", 0f);
+            int window = c.fieldedDecision - 1;
+            Require(window >= 1 && still.potentials.Count > window && Mathf.Approximately(c.potentials[0], still.potentials[0]),
+                "C and the standing-still replay start from the same potential");
+            float chasing = ShapingSum(c.potentials, window), standing = ShapingSum(still.potentials, window);
+            Require(chasing > standing + 0.01f, $"chasing earns more shaping before the first fielding than standing still ({chasing:+0.000} vs {standing:+0.000})");
+            report.AppendLine($"PASS shaping direction on C's ball: first {window} decisions chasing {chasing:+0.000;-0.000} vs standing still {standing:+0.000;-0.000}; " +
+                $"standing still ends {Describe(still.play)}, play sum {controller.LastDefenseShapingReward:+0.000;-0.000}.");
 
             var d = PlayScenario(controller, empty, ExitVelocity(0f, 8f, 34f),
                 (slot, r) => slot == 0 && r.Phase == RunnerPhase.Holding && r.LastTouchedBase == BaseId.First ? RunnerDecision.Advance : (RunnerDecision?)null);
@@ -612,15 +631,22 @@ namespace BaseballSimulation.Editor
 
         /// <summary>
         /// 새 타석에서 상황을 정한 뒤 시나리오 타구를 시작하고, 매 Academy 단계 뒤 스크립트 수비·주루 명령으로 중립 행동을 덮어써
-        /// 플레이가 끝날 때까지 진행한다. 결과 요약과 다음 타석 시작 상황을 돌려준다.
+        /// 플레이가 끝날 때까지 진행한다(<paramref name="scriptedDefense"/>가 false면 수비는 중립 행동으로 제자리에 선다).
+        /// 수비 결정 시점마다 포텐셜을 따로 표본으로 모아 컨트롤러의 보조 보상 합과 비교한다.
+        /// 결과 요약, 다음 타석 시작 상황, 결정 시점 포텐셜과 첫 포구 뒤 첫 결정의 번호(없으면 -1)를 돌려준다.
         /// </summary>
-        private static (PlaySummary play, SituationSnapshot situation, float seconds, string fielder, string first, Vector3 catchPoint) PlayScenario(
-            TrainingEnvController controller, Situation situation, Vector3 exitVelocity, Func<int, RunnerSnapshot, RunnerDecision?> runnerPolicy)
+        private static (PlaySummary play, SituationSnapshot situation, float seconds, string fielder, string first, Vector3 catchPoint,
+            List<float> potentials, int fieldedDecision) PlayScenario(
+            TrainingEnvController controller, Situation situation, Vector3 exitVelocity, Func<int, RunnerSnapshot, RunnerDecision?> runnerPolicy,
+            bool scriptedDefense = true)
         {
             PlayDirector director = controller.Director;
             SetSituation(controller, situation);
             string firstFielder = "none";
             Vector3 firstCatch = Vector3.zero;
+            var potentials = new List<float>();
+            int fieldedDecision = -1;
+            int fieldSteps = 0;
             void OnFielded(int index, bool inAir)
             {
                 if (firstFielder != "none") return;
@@ -640,7 +666,13 @@ namespace BaseballSimulation.Editor
                     Unity.MLAgents.Academy.Instance.EnvironmentStep();
                     if (director.State == PlayState.BattedBallInFlight)
                     {
-                        ScriptedDefense(director);
+                        // Director 고정 단계 전이라 컨트롤러가 이번 단계 결정 직전에 본 상태와 같다.
+                        if (fieldSteps++ % controller.FieldDecisionInterval == 0)
+                        {
+                            potentials.Add(PlayOutcomeRewards.DefensePotential(director));
+                            if (fieldedDecision < 0 && director.BattedBallFielded) fieldedDecision = potentials.Count - 1;
+                        }
+                        if (scriptedDefense) ScriptedDefense(director);
                         for (int slot = 0; slot < director.RunnerSlotCount && runnerPolicy != null; slot++)
                         {
                             RunnerDecision? decision = runnerPolicy(slot, director.GetRunnerSnapshot(slot));
@@ -653,8 +685,9 @@ namespace BaseballSimulation.Editor
                 Require(controller.CompletedPlays == before + 1 && controller.LastPlayHadFielding, "scenario play finished with fielding");
                 PlaySummary play = controller.LastPlaySummary;
                 Require(play.Resolved, "play resolved");
+                RequireDefenseShaping(controller, potentials);
                 BatterAgentVerification.FinishCurrentPlateAppearance(controller);
-                return (play, director.GetSituation(), seconds, firstFielder, firstFielder, firstCatch);
+                return (play, director.GetSituation(), seconds, firstFielder, firstFielder, firstCatch, potentials, fieldedDecision);
             }
             finally
             {
@@ -782,6 +815,27 @@ namespace BaseballSimulation.Editor
             if (batter.LastPlateAppearanceHadDecisions)
                 Require(Mathf.Abs(batter.LastCompletedCumulativeReward - (batter.LastPlateAppearanceAddedReward + batter.LastOutcomeReward)) < 1e-4f,
                     "batter episode reward = pitch rewards + outcome");
+        }
+
+        /// <summary>
+        /// 수비 보조 보상 합 = Σ(γΦ(k+1) − Φ(k)) − Φ(마지막) = −Φ(0) + (γ − 1)ΣΦ(k≥1). 끝난 상태의 포텐셜을 0으로 두었는지,
+        /// 결정 시점마다 한 번씩만 줬는지를 확인한다.
+        /// </summary>
+        private static void RequireDefenseShaping(TrainingEnvController controller, List<float> potentials)
+        {
+            Require(potentials.Count > 0, "fielder decision potentials sampled");
+            float expected = -potentials[0];
+            for (int k = 1; k < potentials.Count; k++) expected += (PlayOutcomeRewards.DefenseShapingGamma - 1f) * potentials[k];
+            Require(Mathf.Abs(controller.LastDefenseShapingReward - expected) < 1e-4f,
+                $"defense shaping sum = -Φ0 + (γ-1)ΣΦ (got {controller.LastDefenseShapingReward:F5}, expected {expected:F5})");
+        }
+
+        /// <summary>처음 <paramref name="transitions"/>개 결정 사이의 보조 보상 합 Σ(γΦ(k+1) − Φ(k)).</summary>
+        private static float ShapingSum(List<float> potentials, int transitions)
+        {
+            float sum = 0f;
+            for (int k = 0; k < transitions; k++) sum += PlayOutcomeRewards.DefenseShapingGamma * potentials[k + 1] - potentials[k];
+            return sum;
         }
 
         private static float Stat(TrainingEnvController controller, string key)

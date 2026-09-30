@@ -93,6 +93,45 @@ mlagents-learn Training/config/stage2_batter_pitcher_resume.yaml --run-id=stage2
   - 이 지표가 들어가기 전에 만든 `Training/builds/` 실행 파일에는 지표가 없다. `--skip-build` 없이 다시 빌드한다.
 - 학습된 모델 사용: `Training/results/<run-id>/<Behavior>.onnx`를 해당 Agent의 Behavior Parameters `Model`에 넣는다.
 
+### 3단계 수비수가 서 있거나 조금만 움직일 때
+
+수비 Agent는 **타구가 살아 있는 동안에만** 0.1초마다 이동·송구를 결정한다. 투구 중, 볼넷·삼진·헛스윙에는 수비 결정을 요청하지 않는다. 학습기를 연결했더라도 새 수비 모델이 처음부터 공을 쫓는 것은 아니다. 초기 무작위 행동은 방향이 자주 바뀌고 이동 가속도도 제한되어 있어, 전체 구장 화면에서는 움직임이 작게 보일 수 있다.
+
+2026-09-30 저장된 `stage3_full_team`을 확인했을 때 타자는 9,272스텝, 투수는 250스텝이었지만 수비는 320스텝, 주자는 64스텝이었다. 수비·주자의 optimizer 상태에는 업데이트가 한 번도 없었다. 타자·투수는 이전 단계 모델에서 시작하고, 수비·주자는 새 모델에서 시작한다. 타격이 드물면 수비 학습도 늦어진다.
+
+3단계 일반·셀프플레이 설정의 수비 `buffer_size`를 20,480→4,096, `batch_size`를 1,024→256, `summary_freq`를 50,000→2,000으로 조정했다. 학습 데이터 수집 대기와 지표 표시 간격을 줄이는 변경이며, 수비 실력 향상을 검증한 값은 아니다. 관측·행동·보상과 경기 진행 방식은 같다. 연결 중인 학습기에는 YAML 수정이 즉시 적용되지 않으므로 저장 후 재개해야 한다.
+
+기존 일반 3단계 실행을 이어갈 때는 다음 설정을 쓴다. 타자·투수의 `init_path`를 제거해 **네 Behavior 모두 자기 3단계 체크포인트**를 읽는다. 새 학습용 설정에 `--resume`만 붙이면 설치된 ML-Agents 1.1.0은 타자·투수를 다시 2단계에서 가져오므로 주의한다.
+
+```powershell
+mlagents-learn Training/config/stage3_full_team_resume.yaml --run-id=stage3_full_team --results-dir=Training/results --resume
+```
+
+2026-10-01 기준으로는 이 재개보다 아래 [수비 보조 보상](#3단계-수비-보조-보상-2026-10-01) 뒤 새로 시작하는 것을 권한다.
+
+현재 학습 중이면 Ctrl+C 한 번 후 네 모델의 저장 완료를 기다리고, Unity Play를 정지한 다음 위 명령과 `Stage3_FullTeam` Play로 다시 연결한다. `--force`는 쓰지 않는다. TensorBoard에서 `BaseballFielder`의 `Policy`·`Losses`가 생겨 실제 업데이트가 시작됐는지 확인하고, 타자의 `Pitch Call/In Play`로 수비 기회가 얼마나 생기는지 함께 본다. `Environment/Cumulative Reward`나 스텝 증가만으로 학습 업데이트가 있었다고 판단하지 않는다.
+
+### 3단계 수비 보조 보상 (2026-10-01)
+
+위 설정으로 학습한 수비(약 494만 스텝)는 공을 쫓지 않았다. 매 플레이 정해진 방향으로 달려 파울 지역·홈 뒤쪽으로 나갔다. 인플레이의 약 99%가 12 s 시간 초과였고 아웃은 거의 없었다. 결과 보상만으로는 수비 행동에 신호가 가지 않았기 때문이다. 원인과 규칙은 [수비 보조 보상](../docs/fielding-agents.md#수비-보조-보상-2026-10-01)에 있다.
+
+- **바뀐 것:** 수비 그룹에 포텐셜 기반 보조 보상이 생겼다. 쫓기, 첫 포구 +0.25, 포스 베이스 커버다.
+- **바뀌지 않은 것:** 관측·행동·씬·YAML 학습 값. 씬을 다시 만들 필요가 없다.
+- **기존 결과:** 이전 수비 체크포인트는 읽히지만 떠돈 가중치다. 3단계를 새로 시작한다. 기존 결과는 이름을 바꿔 보존한다.
+
+```powershell
+Rename-Item Training\results\stage3_full_team stage3_full_team_noshaping_20261001
+mlagents-learn Training/config/stage3_full_team.yaml --run-id=stage3_full_team --results-dir=Training/results
+```
+
+- **실행:** 저장소 루트에서 실행한다. "Start training by pressing the Play button"이 나오면 Editor에서 스크립트 컴파일이 끝났는지 확인하고 `Stage3_FullTeam`을 Play한다.
+- **출발점:** 타자·투수는 2단계 체크포인트에서, 수비·주자는 새 모델로 시작한다.
+- **자동 실행:** `python Training/auto_curriculum.py --start-stage 3`은 `--skip-build` 없이 실행해 새 코드로 다시 빌드한다.
+- **TensorBoard로 확인:**
+  - `Defense/Fielded`(수비가 타구를 잡은 비율)가 먼저 올라야 한다. 이어서 `Play/Outs`·`Play End/Force Out`·`Fly Out`이 늘고 `Play End/Timeout`이 줄어야 한다.
+  - `Environment/Group Cumulative Reward`와 `Defense Reward/Shaping`에는 할인 없는 보조 보상 합이 섞여 있다. 수비가 못해도 커질 수 있으니 실력 판단에 쓰지 않는다.
+- **재개:** 이 실행을 멈췄다가 이어 갈 때는 위 `stage3_full_team_resume.yaml`과 `--resume`을 쓴다.
+
 ## 병렬 학습
 
 단계 씬에는 경기장이 기본 4개 들어 있다. 400 m 간격으로 복제돼 있고, 모든 경기장이 한 Unity 안에서 동시에 데이터를 모은다.

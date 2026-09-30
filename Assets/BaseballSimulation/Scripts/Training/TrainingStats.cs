@@ -195,6 +195,18 @@ namespace BaseballSimulation
         /// <summary>3아웃으로 끝난 반 이닝의 득점. 무작위 상황으로 시작한 반 이닝은 상황을 정한 뒤의 득점이다.</summary>
         public void RecordHalfInning(int runs) => Add("Half Inning/Runs", runs);
 
+        /// <summary>
+        /// 수비가 결정한 플레이 하나(3단계, 파울 포함). 수비가 타구를 한 번이라도 잡았는지와 수비 그룹의 결과 보상·보조 보상 합.
+        /// 보조 보상 합은 그룹 누적 보상에 들어간 할인 없는 합이다. 할인 합은 −Φ(첫 결정)으로 행동과 무관하지만, 할인 없는 합에는
+        /// (γ−1)ΣΦ가 더해져 공·베이스에서 먼 상태가 길수록 오히려 커진다. 실력 지표로 쓰지 않는다.
+        /// </summary>
+        public void RecordDefensePlay(bool fielded, float outcomeReward, float shapingReward)
+        {
+            Add("Defense/Fielded", fielded ? 1f : 0f);
+            Add("Defense Reward/Outcome", outcomeReward);
+            Add("Defense Reward/Shaping", shapingReward);
+        }
+
         /// <summary>컨트롤러가 초기화한 투구 하나. 중단(1)의 평균이 중단 비율이다.</summary>
         public void RecordPlayEnd(bool aborted) => Add("Env/Aborted Play", aborted ? 1f : 0f);
 
