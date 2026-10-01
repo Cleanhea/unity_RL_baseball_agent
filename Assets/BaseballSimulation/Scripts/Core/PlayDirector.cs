@@ -189,6 +189,8 @@ namespace BaseballSimulation
         public int BallHolder => ball != null ? ball.HolderIndex : -1;
         /// <summary>이번 타구에 수비수가 한 번이라도 닿았으면 true다. 이후 페어/파울·홈런 판정은 하지 않는다.</summary>
         public bool BattedBallFielded => battedBallFielded;
+        /// <summary>이번 플레이에서 마지막으로 송구한 수비수 인덱스. 송구가 없었으면 -1이다.</summary>
+        public int LastThrower => lastThrower;
         /// <summary>수비수가 공을 잡을 때 발생한다. (수비수 인덱스, 타구가 땅·펜스에 닿기 전에 잡았는지)</summary>
         public event System.Action<int, bool> BallFielded;
 

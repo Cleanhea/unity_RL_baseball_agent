@@ -135,6 +135,7 @@
 | `Half Inning/Runs` | 3아웃마다 | 3 | 반 이닝 득점. 무작위 상황으로 시작한 반 이닝은 상황을 정한 뒤의 득점이다 |
 | `Defense/Fielded` | 수비가 결정한 플레이마다(파울·평가 타석 포함) | 3 | 수비가 타구를 한 번이라도 잡은 비율. 수비 학습이 시작됐는지 가장 먼저 보는 값이다 |
 | `Defense Reward/Outcome`·`Shaping` | 수비가 결정한 플레이마다(파울·평가 타석 포함) | 3 | 수비 그룹의 결과 보상과 [보조 보상](fielding-agents.md#수비-보조-보상-2026-10-01) 합. `Environment/Group Cumulative Reward`에는 둘과 시간 감점이 모두 들어 있다. 보조 보상 합은 할인하지 않은 값이라 공·베이스에서 먼 상태가 길수록 오히려 커질 수 있다(검증: 제자리 수비 +1.01). 실력 지표로 쓰지 말고 수비 실력은 `Outcome`·`Fielded`·`Play/*`로 본다 |
+| `Defense/Cover 1B`·`Cover 2B (SS)`·`Cover 3B` | 그 베이스로 진루·귀루 중인 주자가 있었던 수비 플레이마다 | 3 | 맡은 내야수(1루수·유격수·3루수)가 그 동안 베이스 반경 0.6 m 안에 들어간 비율. [내야 역할 보조 보상](fielding-agents.md#내야-역할-보조-보상-2026-10-01)이 통하는지 보는 값이다. 1루수는 거의 모든 땅볼에서 기록된다 |
 | `Env/Aborted Play` | 초기화한 투구마다 | 전체 | 투구 거부·시간 초과로 중단한 비율. 0이 정상이다 |
 | `Matchup/Batter Win`·`Pitcher Win`·`Draw` | Agent끼리 대결한 타석마다 | 2·3 | 타석 결과 보상(`Batter Reward/Outcome`)의 부호로 본 승패 비율. 셋의 합은 1이다 |
 | `Benchmark Batter/…`·`Benchmark Pitcher/…` | 고정 상대 평가 타석 | 2·3 | [고정 상대 평가](#고정-상대-평가-2026-09-27) 참고 |

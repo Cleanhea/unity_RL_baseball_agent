@@ -207,6 +207,23 @@ namespace BaseballSimulation
             Add("Defense Reward/Shaping", shapingReward);
         }
 
+        /// <summary>
+        /// 자기 베이스로 주자가 온 수비 플레이 하나에서 내야수가 그 베이스를 밟았는지(1) 아닌지(0). 평균이 역할별 베이스 커버율이다.
+        /// 유격수는 2루를 맡는다(2루수가 없다).
+        /// </summary>
+        public void RecordInfieldCover(FielderRole role, bool covered) => Add(InfieldCoverKey(role), covered ? 1f : 0f);
+
+        public static string InfieldCoverKey(FielderRole role)
+        {
+            switch (role)
+            {
+                case FielderRole.FirstBase: return "Defense/Cover 1B";
+                case FielderRole.Shortstop: return "Defense/Cover 2B (SS)";
+                case FielderRole.ThirdBase: return "Defense/Cover 3B";
+                default: return "Defense/Cover " + role;
+            }
+        }
+
         /// <summary>컨트롤러가 초기화한 투구 하나. 중단(1)의 평균이 중단 비율이다.</summary>
         public void RecordPlayEnd(bool aborted) => Add("Env/Aborted Play", aborted ? 1f : 0f);
 

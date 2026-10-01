@@ -115,7 +115,7 @@ mlagents-learn Training/config/stage3_full_team_resume.yaml --run-id=stage3_full
 
 위 설정으로 학습한 수비(약 494만 스텝)는 공을 쫓지 않았다. 매 플레이 정해진 방향으로 달려 파울 지역·홈 뒤쪽으로 나갔다. 인플레이의 약 99%가 12 s 시간 초과였고 아웃은 거의 없었다. 결과 보상만으로는 수비 행동에 신호가 가지 않았기 때문이다. 원인과 규칙은 [수비 보조 보상](../docs/fielding-agents.md#수비-보조-보상-2026-10-01)에 있다.
 
-- **바뀐 것:** 수비 그룹에 포텐셜 기반 보조 보상이 생겼다. 쫓기, 첫 포구 +0.25, 포스 베이스 커버다.
+- **바뀐 것:** 수비 그룹에 포텐셜 기반 보조 보상이 생겼다. 쫓기, 첫 포구 +0.25, 포스 베이스 커버다. 같은 날 내야수(1루수·유격수·3루수)가 공을 처리하지 않을 때 자기 베이스(1·2·3루)를 덮도록 돕는 개인 보조 보상도 더했다([내야 역할 보조 보상](../docs/fielding-agents.md#내야-역할-보조-보상-2026-10-01)). 둘 다 같은 새 실행에서 시작하면 된다.
 - **바뀌지 않은 것:** 관측·행동·씬·YAML 학습 값. 씬을 다시 만들 필요가 없다.
 - **기존 결과:** 이전 수비 체크포인트는 읽히지만 떠돈 가중치다. 3단계를 새로 시작한다. 기존 결과는 이름을 바꿔 보존한다.
 
@@ -129,6 +129,7 @@ mlagents-learn Training/config/stage3_full_team.yaml --run-id=stage3_full_team -
 - **자동 실행:** `python Training/auto_curriculum.py --start-stage 3`은 `--skip-build` 없이 실행해 새 코드로 다시 빌드한다.
 - **TensorBoard로 확인:**
   - `Defense/Fielded`(수비가 타구를 잡은 비율)가 먼저 올라야 한다. 이어서 `Play/Outs`·`Play End/Force Out`·`Fly Out`이 늘고 `Play End/Timeout`이 줄어야 한다.
+  - 내야는 `Defense/Cover 1B`가 가장 먼저 오를 것으로 본다(거의 모든 땅볼에 타자주자가 1루로 온다). `Cover 2B (SS)`·`Cover 3B`는 누상 주자가 있을 때만 기록돼 표본이 적다.
   - `Environment/Group Cumulative Reward`와 `Defense Reward/Shaping`에는 할인 없는 보조 보상 합이 섞여 있다. 수비가 못해도 커질 수 있으니 실력 판단에 쓰지 않는다.
 - **재개:** 이 실행을 멈췄다가 이어 갈 때는 위 `stage3_full_team_resume.yaml`과 `--resume`을 쓴다.
 

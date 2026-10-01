@@ -100,6 +100,13 @@ namespace BaseballSimulation
         private int plateAppearancePitches;
         private float defensePotential;
         private float defenseShaping;
+        // 수비수별 개인 보조 보상(내야수만 0이 아니다)과 베이스 커버 지표. 인덱스는 fielders 배열 순서다.
+        private float[] infieldPotential = new float[0];
+        private float[] infieldShaping = new float[0];
+        private float[] lastInfieldShaping = new float[0];
+        private bool[] coverDuty = new bool[0];
+        private bool[] coverDutyPrevious = new bool[0];
+        private bool[] covered = new bool[0];
 
         public TrainingStage Stage => stage;
         public PlayDirector Director => director;
@@ -125,6 +132,8 @@ namespace BaseballSimulation
         public float LastDefenseOutcomeReward { get; private set; }
         /// <summary>마지막 수비 플레이에서 준 보조 보상의 합(<see cref="PlayOutcomeRewards.DefensePotential"/>).</summary>
         public float LastDefenseShapingReward { get; private set; }
+        /// <summary>마지막 수비 플레이에서 그 수비수(fielders 배열 순서)에게 준 개인 보조 보상의 합(<see cref="PlayOutcomeRewards.InfieldPotential"/>).</summary>
+        public float GetLastInfieldShapingReward(int index) => index >= 0 && index < lastInfieldShaping.Length ? lastInfieldShaping[index] : 0f;
         public float LastRunnerOutcomeReward { get; private set; }
         /// <summary>수비·주자가 새 결정을 내리는 고정 단계 간격.</summary>
         public int FieldDecisionInterval => fieldDecisionInterval;
@@ -237,6 +246,12 @@ namespace BaseballSimulation
                 defense = new SimpleMultiAgentGroup();
                 foreach (FielderAgent fielder in fielders) defense.RegisterAgent(fielder);
                 offense = new SimpleMultiAgentGroup();
+                infieldPotential = new float[fielders.Length];
+                infieldShaping = new float[fielders.Length];
+                lastInfieldShaping = new float[fielders.Length];
+                coverDuty = new bool[fielders.Length];
+                coverDutyPrevious = new bool[fielders.Length];
+                covered = new bool[fielders.Length];
             }
             subscribed = true;
             // 첫 초기화에서 Director의 투구 위치·스윙 파워 난수원을 경기장별 시드로 다시 만든다. 0번 경기장은 설정 시드 그대로다.
@@ -276,6 +291,11 @@ namespace BaseballSimulation
             playSteps = 0;
             fieldSteps = 0;
             defensePotential = defenseShaping = 0f;
+            System.Array.Clear(infieldPotential, 0, infieldPotential.Length);
+            System.Array.Clear(infieldShaping, 0, infieldShaping.Length);
+            System.Array.Clear(coverDuty, 0, coverDuty.Length);
+            System.Array.Clear(coverDutyPrevious, 0, coverDutyPrevious.Length);
+            System.Array.Clear(covered, 0, covered.Length);
             situationPending = UsesFielding && newPlateAppearance && situationRandom.NextDouble() < randomSituationProbability;
             situationSettling = false;
             if (newPlateAppearance) BeginOpponent();
@@ -375,7 +395,8 @@ namespace BaseballSimulation
 
         /// <summary>
         /// 타구가 살아 있는 동안 수비 5명과 살아 있는 주자에게 결정을 요청한다. 사이 단계는 마지막 행동을 반복한다.
-        /// 수비 결정마다 보조 보상 γΦ(지금) − Φ(직전 결정)를 준다. 결정 전에 더한 보상은 직전 결정의 행동 결과로 전달된다.
+        /// 수비 결정마다 그룹 보조 보상 γΦ(지금) − Φ(직전 결정)과 내야수 개인 보조 보상 γΦ_i(지금) − Φ_i(직전 결정)를 준다.
+        /// 결정 전에 더한 보상은 직전 결정의 행동 결과로 전달된다.
         /// </summary>
         private void StepFielding()
         {
@@ -391,7 +412,14 @@ namespace BaseballSimulation
                 float potential = PlayOutcomeRewards.DefensePotential(director);
                 if (fieldSteps > 0) AddDefenseShaping(PlayOutcomeRewards.DefenseShapingGamma * potential - defensePotential);
                 defensePotential = potential;
+                for (int i = 0; i < fielders.Length; i++)
+                {
+                    float infield = PlayOutcomeRewards.InfieldPotential(director, fielders[i].FielderIndex);
+                    if (fieldSteps > 0) AddInfieldShaping(i, PlayOutcomeRewards.DefenseShapingGamma * infield - infieldPotential[i]);
+                    infieldPotential[i] = infield;
+                }
             }
+            TrackInfieldCover();
             fieldSteps++;
             foreach (FielderAgent fielder in fielders)
             {
@@ -461,9 +489,15 @@ namespace BaseballSimulation
                     // 끝난 상태의 포텐셜은 0이다. 그래야 보조 보상 합이 수비 행동과 무관해진다.
                     AddDefenseShaping(-defensePotential);
                     LastDefenseShapingReward = defenseShaping;
+                    for (int i = 0; i < fielders.Length; i++) AddInfieldShaping(i, -infieldPotential[i]);
+                    System.Array.Copy(infieldShaping, lastInfieldShaping, infieldShaping.Length);
+                    // 마지막 고정 단계에 베이스를 밟아 아웃을 만들고 끝난 플레이도 커버로 센다.
+                    TrackInfieldCover();
                     defense.AddGroupReward(LastDefenseOutcomeReward);
                     defense.EndGroupEpisode();
                     stats.RecordDefensePlay(director.BattedBallFielded, LastDefenseOutcomeReward, defenseShaping);
+                    for (int i = 0; i < fielders.Length; i++)
+                        if (coverDuty[i]) stats.RecordInfieldCover(director.GetFielder(fielders[i].FielderIndex).Role, covered[i]);
                 }
                 if (runnersActed)
                 {
@@ -509,6 +543,10 @@ namespace BaseballSimulation
                     // 중단은 끝이 아니라 마지막 관측에서 가치를 이어 받으므로, 지금 상태의 포텐셜로 마지막 차분을 준다.
                     AddDefenseShaping(PlayOutcomeRewards.DefenseShapingGamma * PlayOutcomeRewards.DefensePotential(director) - defensePotential);
                     LastDefenseShapingReward = defenseShaping;
+                    for (int i = 0; i < fielders.Length; i++)
+                        AddInfieldShaping(i, PlayOutcomeRewards.DefenseShapingGamma *
+                            PlayOutcomeRewards.InfieldPotential(director, fielders[i].FielderIndex) - infieldPotential[i]);
+                    System.Array.Copy(infieldShaping, lastInfieldShaping, infieldShaping.Length);
                     defense.GroupEpisodeInterrupted();
                 }
                 if (runnersActed) offense.GroupEpisodeInterrupted();
@@ -534,6 +572,33 @@ namespace BaseballSimulation
         {
             defense.AddGroupReward(reward);
             defenseShaping += reward;
+        }
+
+        /// <summary>내야수 개인 보조 보상은 그룹 보상이 아니라 그 수비수에게만 준다(MA-POCA는 개인 보상과 그룹 보상을 더해 학습한다).</summary>
+        private void AddInfieldShaping(int index, float reward)
+        {
+            if (reward == 0f) return;
+            fielders[index].AddReward(reward);
+            infieldShaping[index] += reward;
+        }
+
+        /// <summary>
+        /// 베이스 커버 지표: 자기 베이스로 주자가 오는 동안(또는 그 직전 고정 단계에) 내야수가 베이스 반경 안에 있었는지 센다.
+        /// 공을 쥔 채 베이스를 밟아 포스 아웃을 만들면 같은 단계에 주자가 아웃되므로 직전 단계의 상태도 본다.
+        /// </summary>
+        private void TrackInfieldCover()
+        {
+            for (int i = 0; i < fielders.Length; i++)
+            {
+                FielderController body = director.GetFielder(fielders[i].FielderIndex);
+                if (!PlayOutcomeRewards.TryGetCoverBase(body.Role, out BaseId baseId)) continue;
+                bool duty = PlayOutcomeRewards.IsBaseInPlay(director, baseId);
+                Vector3 offset = body.Position - director.FieldLayout.GetBasePosition(baseId);
+                if ((duty || coverDutyPrevious[i]) && new Vector2(offset.x, offset.z).magnitude <= director.EnvironmentConfig.BaseCoverRadius)
+                    covered[i] = true;
+                coverDuty[i] |= duty;
+                coverDutyPrevious[i] = duty;
+            }
         }
     }
 }

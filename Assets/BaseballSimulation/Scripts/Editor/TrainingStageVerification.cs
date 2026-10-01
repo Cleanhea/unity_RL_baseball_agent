@@ -472,6 +472,11 @@ namespace BaseballSimulation.Editor
 
             FieldLayout field = director.FieldLayout;
             var empty = new Situation(false, false, false, 0);
+            int firstBase = FielderIndexOf(director, FielderRole.FirstBase);
+            string cover1B = TrainingStats.InfieldCoverKey(FielderRole.FirstBase);
+            string cover2B = TrainingStats.InfieldCoverKey(FielderRole.Shortstop);
+            string cover3B = TrainingStats.InfieldCoverKey(FielderRole.ThirdBase);
+            int cover2BCount = controller.Stats.CountOf(cover2B), cover3BCount = controller.Stats.CountOf(cover3B);
 
             var a = PlayScenario(controller, empty, ExitVelocity(-13.8f, -6f, 28f), null);
             Require(a.play.EndReason == PitchEndReason.ForceOut && a.play.Outs == 1, $"A grounder to short is a force out at first (got {Describe(a.play)})");
@@ -492,6 +497,12 @@ namespace BaseballSimulation.Editor
             report.AppendLine($"PASS A defense shaping: potential {a.potentials[0]:+0.000;-0.000} at contact, " +
                 $"{a.potentials[a.fieldedDecision - 1]:+0.000;-0.000} → {a.potentials[a.fieldedDecision]:+0.000;-0.000} at the first fielding, " +
                 $"play sum {controller.LastDefenseShapingReward:+0.000;-0.000} over {a.potentials.Count} decisions.");
+            // 내야 역할 보조 보상: 타자주자가 1루로 달리는 동안 1루수가 1루에 있었다. 2·3루로 향한 주자가 없어 그 지표는 기록되지 않는다.
+            RequireStat(controller, cover1B, 1f);
+            Require(controller.Stats.CountOf(cover2B) == cover2BCount && controller.Stats.CountOf(cover3B) == cover3BCount,
+                "A records no 2B/3B cover because no runner heads there");
+            report.AppendLine($"PASS A infield role shaping: Φ_i at contact {DescribeInfield(director, a.infield[0])}, play sums {DescribeInfieldSums(controller)}; " +
+                $"outfielders 0, holder/thrower/chaser rules hold at all {a.infield.Count} decisions, {cover1B} = 1.");
 
             var b = PlayScenario(controller, empty, ExitVelocity(-19f, 32f, 34f), null);
             Require(b.play.EndReason == PitchEndReason.FlyOut && b.play.Outs == 1, $"B fly ball to left-center is caught (got {Describe(b.play)})");
@@ -506,6 +517,7 @@ namespace BaseballSimulation.Editor
             RequireStat(controller, "Play/Batter Bases", 1f);
             RequireStat(controller, "Play End/Runner Safe", 1f);
             RequireStat(controller, "Matchup/Batter Win", 1f);
+            RequireStat(controller, cover1B, 1f);
             report.AppendLine($"PASS C single up the middle: {Describe(c.play)} at {c.seconds:F2} s, fielded by {c.fielder}, defense {controller.LastDefenseOutcomeReward:+0.00;-0.00}, runners {controller.LastRunnerOutcomeReward:+0.00;-0.00}, batter {controller.LastBatterOutcomeReward:+0.00;-0.00}.");
 
             // 보조 보상 방향: 같은 타구에서 공을 쫓고 1루를 덮는 스크립트 수비가 제자리 수비보다 첫 포구 전까지 보조 보상을 더 받는다.
@@ -518,6 +530,15 @@ namespace BaseballSimulation.Editor
             Require(chasing > standing + 0.01f, $"chasing earns more shaping before the first fielding than standing still ({chasing:+0.000} vs {standing:+0.000})");
             report.AppendLine($"PASS shaping direction on C's ball: first {window} decisions chasing {chasing:+0.000;-0.000} vs standing still {standing:+0.000;-0.000}; " +
                 $"standing still ends {Describe(still.play)}, play sum {controller.LastDefenseShapingReward:+0.000;-0.000}.");
+            // 1루수 개인 보조 보상 방향: 1루로 뛰어가는 쪽이 제자리보다 첫 1초 동안 더 받는다. 제자리 1루수는 1루를 밟지 못한다.
+            RequireStat(controller, cover1B, 0f);
+            int infieldWindow = Mathf.Min(window, 10);
+            float coverRunning = ShapingSum(Column(c.infield, firstBase), infieldWindow);
+            float coverStanding = ShapingSum(Column(still.infield, firstBase), infieldWindow);
+            Require(coverRunning > coverStanding + 0.03f,
+                $"1B running to first earns more infield shaping than standing still ({coverRunning:+0.000} vs {coverStanding:+0.000})");
+            report.AppendLine($"PASS 1B cover direction on C's ball: first {infieldWindow} decisions running to first {coverRunning:+0.000;-0.000} " +
+                $"vs standing still {coverStanding:+0.000;-0.000}; {cover1B} 1 vs 0.");
 
             var d = PlayScenario(controller, empty, ExitVelocity(0f, 8f, 34f),
                 (slot, r) => slot == 0 && r.Phase == RunnerPhase.Holding && r.LastTouchedBase == BaseId.First ? RunnerDecision.Advance : (RunnerDecision?)null);
@@ -538,6 +559,10 @@ namespace BaseballSimulation.Editor
                     : f.play.EndReason == PitchEndReason.RunnerSafe && f.situation.OnFirst && !f.situation.OnSecond),
                 $"F runner on first, grounder to short: force outs with consistent bases (got {Describe(f.play)}, {Describe(f.situation)})");
             RequireOutcomeRewards(controller);
+            // 1루 주자가 2루로 밀려나므로 유격수가 2루를, 타자주자 때문에 1루수가 1루를 밟는다.
+            RequireStat(controller, cover2B, 1f);
+            RequireStat(controller, cover1B, 1f);
+            report.AppendLine($"PASS F infield role shaping: play sums {DescribeInfieldSums(controller)}, {cover2B} = 1, {cover1B} = 1.");
             report.AppendLine($"PASS F runner on 1B, grounder to SS: {Describe(f.play)}, then {Describe(f.situation)}, defense {controller.LastDefenseOutcomeReward:+0.00;-0.00}, runners {controller.LastRunnerOutcomeReward:+0.00;-0.00}, batter {controller.LastBatterOutcomeReward:+0.00;-0.00}.");
 
             // G) 3루 주자 1아웃, 좌중간 뜬공: 포구 후 태그업으로 홈인(희생플라이).
@@ -636,7 +661,7 @@ namespace BaseballSimulation.Editor
         /// 결과 요약, 다음 타석 시작 상황, 결정 시점 포텐셜과 첫 포구 뒤 첫 결정의 번호(없으면 -1)를 돌려준다.
         /// </summary>
         private static (PlaySummary play, SituationSnapshot situation, float seconds, string fielder, string first, Vector3 catchPoint,
-            List<float> potentials, int fieldedDecision) PlayScenario(
+            List<float> potentials, int fieldedDecision, List<float[]> infield) PlayScenario(
             TrainingEnvController controller, Situation situation, Vector3 exitVelocity, Func<int, RunnerSnapshot, RunnerDecision?> runnerPolicy,
             bool scriptedDefense = true)
         {
@@ -645,6 +670,7 @@ namespace BaseballSimulation.Editor
             string firstFielder = "none";
             Vector3 firstCatch = Vector3.zero;
             var potentials = new List<float>();
+            var infield = new List<float[]>();
             int fieldedDecision = -1;
             int fieldSteps = 0;
             void OnFielded(int index, bool inAir)
@@ -670,6 +696,7 @@ namespace BaseballSimulation.Editor
                         if (fieldSteps++ % controller.FieldDecisionInterval == 0)
                         {
                             potentials.Add(PlayOutcomeRewards.DefensePotential(director));
+                            infield.Add(SampleInfieldPotentials(director));
                             if (fieldedDecision < 0 && director.BattedBallFielded) fieldedDecision = potentials.Count - 1;
                         }
                         if (scriptedDefense) ScriptedDefense(director);
@@ -686,8 +713,9 @@ namespace BaseballSimulation.Editor
                 PlaySummary play = controller.LastPlaySummary;
                 Require(play.Resolved, "play resolved");
                 RequireDefenseShaping(controller, potentials);
+                RequireInfieldShaping(controller, infield);
                 BatterAgentVerification.FinishCurrentPlateAppearance(controller);
-                return (play, director.GetSituation(), seconds, firstFielder, firstFielder, firstCatch, potentials, fieldedDecision);
+                return (play, director.GetSituation(), seconds, firstFielder, firstFielder, firstCatch, potentials, fieldedDecision, infield);
             }
             finally
             {
@@ -829,6 +857,80 @@ namespace BaseballSimulation.Editor
             Require(Mathf.Abs(controller.LastDefenseShapingReward - expected) < 1e-4f,
                 $"defense shaping sum = -Φ0 + (γ-1)ΣΦ (got {controller.LastDefenseShapingReward:F5}, expected {expected:F5})");
         }
+
+        /// <summary>
+        /// 결정 시점의 수비수별 개인 포텐셜 Φ_i를 모으며 규칙을 따로 확인한다. 외야수, 공을 쥔 수비수, 자기 송구가 날아가는 수비수는 0이다.
+        /// 나머지 내야수는 −계수 × 자기 베이스와의 수평 거리다. 예외는 첫 포구 전 공을 쫓는 수비수 한 명뿐이고 그 값은 0이다.
+        /// </summary>
+        private static float[] SampleInfieldPotentials(PlayDirector director)
+        {
+            var sample = new float[director.FielderCount];
+            int chasers = 0;
+            for (int f = 0; f < sample.Length; f++)
+            {
+                sample[f] = PlayOutcomeRewards.InfieldPotential(director, f);
+                FielderController body = director.GetFielder(f);
+                bool infielder = PlayOutcomeRewards.TryGetCoverBase(body.Role, out BaseId own);
+                bool exempt = director.BallHolder == f || (director.BallHolder < 0 && director.LastThrower == f);
+                if (!infielder || exempt)
+                {
+                    Require(sample[f] == 0f, $"{body.name} has no infield potential as an outfielder, holder or thrower (got {sample[f]:F5})");
+                    continue;
+                }
+                float expected = -PlayOutcomeRewards.InfieldCoverPerMeter * Flat(body.Position - director.FieldLayout.GetBasePosition(own)).magnitude;
+                if (Mathf.Abs(sample[f] - expected) < 1e-5f) continue;
+                Require(sample[f] == 0f && !director.BattedBallFielded && ++chasers == 1,
+                    $"{body.name} infield potential is -weight x distance to its base or 0 as the one chaser (got {sample[f]:F5}, expected {expected:F5})");
+            }
+            return sample;
+        }
+
+        /// <summary>내야수 개인 보조 보상 합도 수비수마다 −Φ_i(0) + (γ − 1)ΣΦ_i(k≥1)와 같아야 한다. 외야수는 0이다.</summary>
+        private static void RequireInfieldShaping(TrainingEnvController controller, List<float[]> infield)
+        {
+            Require(infield.Count > 0, "infield potentials sampled");
+            for (int j = 0; j < controller.Fielders.Length; j++)
+            {
+                List<float> column = Column(infield, controller.Fielders[j].FielderIndex);
+                float expected = -column[0];
+                for (int k = 1; k < column.Count; k++) expected += (PlayOutcomeRewards.DefenseShapingGamma - 1f) * column[k];
+                float got = controller.GetLastInfieldShapingReward(j);
+                Require(Mathf.Abs(got - expected) < 1e-4f,
+                    $"{controller.Fielders[j].name} infield shaping sum = -Φ0 + (γ-1)ΣΦ (got {got:F5}, expected {expected:F5})");
+            }
+        }
+
+        private static List<float> Column(List<float[]> samples, int index)
+        {
+            var column = new List<float>(samples.Count);
+            foreach (float[] sample in samples) column.Add(sample[index]);
+            return column;
+        }
+
+        private static int FielderIndexOf(PlayDirector director, FielderRole role)
+        {
+            for (int i = 0; i < director.FielderCount; i++)
+                if (director.GetFielder(i).Role == role) return i;
+            throw new Exception("Training stage verification failed: no fielder with role " + role);
+        }
+
+        private static string DescribeInfieldSums(TrainingEnvController controller)
+        {
+            var text = new StringBuilder();
+            for (int j = 0; j < controller.Fielders.Length; j++)
+            {
+                FielderRole role = controller.Director.GetFielder(controller.Fielders[j].FielderIndex).Role;
+                if (!PlayOutcomeRewards.TryGetCoverBase(role, out _)) continue;
+                if (text.Length > 0) text.Append(", ");
+                text.Append($"{role} {controller.GetLastInfieldShapingReward(j):+0.000;-0.000}");
+            }
+            return text.ToString();
+        }
+
+        private static string DescribeInfield(PlayDirector director, float[] sample) =>
+            $"1B {sample[FielderIndexOf(director, FielderRole.FirstBase)]:+0.000;-0.000}, " +
+            $"SS {sample[FielderIndexOf(director, FielderRole.Shortstop)]:+0.000;-0.000}, " +
+            $"3B {sample[FielderIndexOf(director, FielderRole.ThirdBase)]:+0.000;-0.000}";
 
         /// <summary>처음 <paramref name="transitions"/>개 결정 사이의 보조 보상 합 Σ(γΦ(k+1) − Φ(k)).</summary>
         private static float ShapingSum(List<float> potentials, int transitions)
