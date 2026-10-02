@@ -6,7 +6,7 @@ behaviors:
       batch_size: 256
       buffer_size: 10240
       learning_rate: 0.0002
-      beta: 0.005
+      beta: 0.02
       epsilon: 0.2
       lambd: 0.95
       num_epoch: 3
@@ -35,7 +35,7 @@ behaviors:
           memory: null
           goal_conditioning_type: hyper
           deterministic: false
-    init_path: null
+    init_path: Training/results/stage3_full_team_9f_try1_20261002/BaseballBatter/checkpoint.pt
     keep_checkpoints: 5
     even_checkpoints: false
     max_steps: 6000000
@@ -79,7 +79,7 @@ behaviors:
           memory: null
           goal_conditioning_type: hyper
           deterministic: false
-    init_path: null
+    init_path: Training/results/stage3_full_team_9f_try1_20261002/BaseballPitcher/checkpoint.pt
     keep_checkpoints: 5
     even_checkpoints: false
     max_steps: 400000
@@ -122,7 +122,7 @@ behaviors:
           memory: null
           goal_conditioning_type: hyper
           deterministic: false
-    init_path: null
+    init_path: Training/results/stage3_full_team_9f_try1_20261002/BaseballRunner/checkpoint.pt
     keep_checkpoints: 5
     even_checkpoints: false
     max_steps: 2000000
@@ -132,7 +132,7 @@ behaviors:
     self_play: null
     behavioral_cloning: null
   BaseballFielder:
-    trainer_type: poca
+    trainer_type: baseball_fielder_poca
     hyperparameters:
       batch_size: 256
       buffer_size: 4096
@@ -199,7 +199,7 @@ checkpoint_settings:
   run_id: stage3_full_team
   initialize_from: null
   load_model: false
-  resume: true
+  resume: false
   force: false
   train_model: false
   inference: false

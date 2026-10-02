@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "baseball-mlagents"
+version = "0.1.0"
+description = "Direction-preserving fielder actions for the baseball ML-Agents project"
+requires-python = ">=3.10.1,<3.11"
+dependencies = ["mlagents==1.1.0"]
+
+[project.entry-points."mlagents.trainer_type"]
+baseball_fielder = "baseball_mlagents.trainer:register_trainers"
+
+[tool.setuptools.packages.find]
+include = ["baseball_mlagents*"]

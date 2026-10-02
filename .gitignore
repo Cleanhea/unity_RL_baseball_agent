@@ -105,3 +105,8 @@ InitTestScene*.unity*
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
 
+
+# Generated files from the local ML-Agents extension
+/Training/mlagents_extensions/*.egg-info/
+/Training/mlagents_extensions/build/
+/Training/mlagents_extensions/**/__pycache__/

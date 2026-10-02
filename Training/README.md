@@ -115,9 +115,20 @@ mlagents-learn Training/config/stage3_full_team_resume.yaml --run-id=stage3_full
 
 위 설정으로 학습한 수비(약 494만 스텝)는 공을 쫓지 않았다. 매 플레이 정해진 방향으로 달려 파울 지역·홈 뒤쪽으로 나갔다. 인플레이의 약 99%가 12 s 시간 초과였고 아웃은 거의 없었다. 결과 보상만으로는 수비 행동에 신호가 가지 않았기 때문이다. 원인과 규칙은 [수비 보조 보상](../docs/fielding-agents.md#수비-보조-보상-2026-10-01)에 있다.
 
-- **바뀐 것:** 수비 그룹에 포텐셜 기반 보조 보상이 생겼다. 쫓기, 첫 포구 +0.25, 포스 베이스 커버다. 같은 날 내야수(1루수·유격수·3루수)가 공을 처리하지 않을 때 자기 베이스(1·2·3루)를 덮도록 돕는 개인 보조 보상도 더했다([내야 역할 보조 보상](../docs/fielding-agents.md#내야-역할-보조-보상-2026-10-01)). 둘 다 같은 새 실행에서 시작하면 된다.
-- **바뀌지 않은 것:** 관측·행동·씬·YAML 학습 값. 씬을 다시 만들 필요가 없다.
+- **바뀐 것:** 수비 그룹에 첫 포구 +0.25·포스 베이스 커버 보조 보상이 생겼다. 후속 수정으로 쫓기는 가장 가까운 수비수 개인에게만 지급하고 계수를 0.02→0.05 /m로 올렸다. 같은 날 내야수(1루수·유격수·3루수)가 공을 처리하지 않을 때 자기 베이스(1·2·3루)를 덮도록 돕는 개인 보조 보상도 더했다([내야 역할 보조 보상](../docs/fielding-agents.md#내야-역할-보조-보상-2026-10-01)). 둘 다 같은 새 실행에서 시작하면 된다.
+- **설정·이동:** 일반·재개·셀프플레이 YAML 모두 수비 `beta`는 1e-3이다. 수비 YAML의 `trainer_type: baseball_fielder_poca`가 선택하는 등록 확장에서 정책 출력은 기존 `/3` 스케일을 유지한 뒤 벡터 크기만 1로 제한한다. 같은 변환을 학습 행동과 ONNX 출력에 적용한다. Unity Agent도 성분별 클램프를 제거했다. 관측·행동 수·씬 참조는 그대로다.
+- **실행 진입점:** 기존 `mlagents-learn` 명령을 그대로 쓴다. 저장소의 `Training/mlagents_extensions`를 Python 환경에 한 번 등록하면 CLI가 수비 전용 POCA 확장을 자동으로 불러온다. `auto_curriculum.py`도 모든 단계에서 일반 CLI를 쓴다. 코드 변경은 저장소에서 관리하고 타자·투수·주자 학습기는 그대로다. 이미 내보낸 옛 ONNX는 다시 내보내야 한다. `Training/train.py`는 이전 명령 호환용 별칭이다. 스크립트 추적 혼합은 후속 학습 결과를 보고 판단한다.
+- **자리 유지:** 공을 쫓거나 쥐거나 송구 중인 수비수를 제외하고, 1루수·유격수·3루수는 담당 베이스의 3 m 반경 밖에서 작은 개인 감점을 받는다. 초당 `−min(0.05, 0.002 × 초과 거리)`이며 첫 결정 뒤 고정 단계 시간으로 누적한다. 반경 안은 0이고 종료 때 돌려주지 않는다. 이는 포텐셜 보조 신호와 별개의 실제 역할 목표다. 2루는 유격수가 맡는다.
+- **변환 검증:** 같은 ML-Agents Python 환경에서 `python Training/verify_fielder_actions.py`로 환경 행동·원본 optimizer 행동·다른 Agent 회귀·ONNX 방향을 검사한다. 학습은 실행하지 않으며 테스트 ONNX만 임시 폴더에 만든다.
 - **기존 결과:** 이전 수비 체크포인트는 읽히지만 떠돈 가중치다. 3단계를 새로 시작한다. 기존 결과는 이름을 바꿔 보존한다.
+
+새 Python 환경에서는 저장소 루트에서 한 번 등록한다. 현재 `C:\miniconda3\envs\mlagents` 환경에는 등록했다. ML-Agents 1.1.0을 사용하는 환경에서 실행한다.
+
+```powershell
+python -m pip install --no-deps --no-build-isolation --no-index -e Training/mlagents_extensions
+```
+
+그다음 기존 명령으로 학습한다. 현재 학습이 실행 중이면 먼저 저장 후 종료한다.
 
 ```powershell
 Rename-Item Training\results\stage3_full_team stage3_full_team_noshaping_20261001
@@ -129,9 +140,46 @@ mlagents-learn Training/config/stage3_full_team.yaml --run-id=stage3_full_team -
 - **자동 실행:** `python Training/auto_curriculum.py --start-stage 3`은 `--skip-build` 없이 실행해 새 코드로 다시 빌드한다.
 - **TensorBoard로 확인:**
   - `Defense/Fielded`(수비가 타구를 잡은 비율)가 먼저 올라야 한다. 이어서 `Play/Outs`·`Play End/Force Out`·`Fly Out`이 늘고 `Play End/Timeout`이 줄어야 한다.
-  - 내야는 `Defense/Cover 1B`가 가장 먼저 오를 것으로 본다(거의 모든 땅볼에 타자주자가 1루로 온다). `Cover 2B (SS)`·`Cover 3B`는 누상 주자가 있을 때만 기록돼 표본이 적다.
-  - `Environment/Group Cumulative Reward`와 `Defense Reward/Shaping`에는 할인 없는 보조 보상 합이 섞여 있다. 수비가 못해도 커질 수 있으니 실력 판단에 쓰지 않는다.
+  - 내야는 `Defense/Cover 1B`가 가장 먼저 오를 것으로 본다(거의 모든 땅볼에 타자주자가 1루로 온다). `Cover 2B`·`Cover 3B`·`Cover Home`은 누상 주자가 있을 때만 기록돼 표본이 적다(2026-10-02부터 베이스 기준 이름).
+  - `Defense Reward/Shaping`은 그룹 포구·포스 커버 합, `Defense Reward/Chase Shaping`은 개인 쫓기 보상 총합이다. 둘 다 할인 없는 합이라 수비가 못해도 커질 수 있으니 실력 판단에 쓰지 않는다. 개인 쫓기는 `Environment/Group Cumulative Reward`에는 포함되지 않는다.
+  - `Defense Reward/Position`(2026-10-02 이전 `Infield Position`)은 개인 자리 이탈 감점의 합이다. 0에 가까울수록 해당 플레이에서 이탈 감점이 적었다. 플레이 시간·역할 면제에 영향을 받으므로 실제 커버율·포구율도 함께 본다.
+  - 연결 중인 학습기의 `beta`는 YAML 저장만으로 바뀌지 않는다. 저장 후 재시작해야 하며, 독립 실행 파일은 새 코드로 다시 빌드해야 한다. 학습기 자동 재시작·결과 폴더 이동은 이 코드 수정에서 실행하지 않았다.
 - **재개:** 이 실행을 멈췄다가 이어 갈 때는 위 `stage3_full_team_resume.yaml`과 `--resume`을 쓴다.
+
+### 3단계 수비 9명·역할 임무 보상 (2026-10-02)
+
+수비를 투수·포수·1B·2B·3B·SS·LF·CF·RF 9명으로 늘리고 보상을 개편했다. 학습한 수비가 공을 치면 자기 구역을 벗어나 떠도는 문제 때문이다. 규칙은 [수비 9명·역할 임무 보상](../docs/fielding-agents.md#수비-9명역할-임무-보상-개편-2026-10-02)에 있다.
+
+- **바뀐 것:**
+  - 처음 공을 잡은 수비수에게 개인 포구 보상 +0.3을 준다. 끝에서 회수하지 않는다.
+  - 공을 처리하지 않는 수비수 모두에게 역할 임무가 있다. 포수 홈, 1·3루수 자기 베이스, 2루는 타구 방향에 따라 2루수 또는 유격수, 투수는 1루수가 공을 처리할 때 1루, 외야는 자기 구역 12 m다.
+  - 임무 지점 밖 자리 감점은 초당 최대 0.1이다(이전 내야만 0.05).
+- **호환:** 수비 관측 65→77, 주자 관측 57→65다. 기존 `stage3_full_team`의 수비·주자 체크포인트로는 재개할 수 없다(`stage3_full_team_resume.yaml` 포함). 3단계를 새 실행으로 시작한다. 타자·투수 관측은 그대로다.
+- **씬:** 저장소의 `Stage3_FullTeam`은 새 구성(경기장 4개 × 9명)으로 다시 만들어 두었다. 다른 경기장 수가 필요하면 `Build Stage 3 Scene`으로 다시 만든다. 독립 실행 파일은 다시 빌드한다(`auto_curriculum.py`를 `--skip-build` 없이 실행).
+
+현재 학습이 실행 중이면 Ctrl+C 한 번 후 저장이 끝나기를 기다린다. 그다음 기존 결과를 보존하고 새로 시작한다.
+
+```powershell
+Rename-Item Training\results\stage3_full_team stage3_full_team_5fielders_20261002
+mlagents-learn Training/config/stage3_full_team.yaml --run-id=stage3_full_team --results-dir=Training/results
+```
+
+- **출발점:** `stage3_full_team.yaml`은 타자·투수를 2단계 체크포인트에서 시작한다. 직전 3단계에서 이어 학습한 타자·투수를 쓰려면 두 `init_path`를 보존한 폴더의 `BaseballBatter/checkpoint.pt`·`BaseballPitcher/checkpoint.pt`로 바꾼다.
+- **TensorBoard로 확인:** `Defense/Fielded`와 `Defense Reward/Fielding`(= 포구율 × 0.3)이 먼저 올라야 한다. 이어서 `Defense Reward/Position`이 0 쪽으로 오르고(자리 이탈 감소), `Play End/Timeout`이 줄고 `Play/Outs`가 늘어야 한다. `Defense/Cover Home`은 포수가 홈을 지키는지 본다.
+
+### 3단계 수비만 다시 학습 (2026-10-02)
+
+9명으로 처음 학습한 수비는 거의 서 있고, 공을 잡자마자 아무도 없는 베이스로 던지는 정책으로 굳었다. 원인과 수정은 [수비 정지·즉시 송구 수정](../docs/fielding-agents.md#수비-정지즉시-송구-수정-2026-10-02-후속)에 있다. 이동 배율 3, 송구 마스크(공을 쥔 수비수만 송구 선택), 수비 `beta` 5e-3을 적용했다.
+
+수비만 새로 시작하고 타자·투수·주자는 그 실행에서 이어 받는다. 학습 중이면 Ctrl+C 한 번 후 저장이 끝나기를 기다린 뒤 실행한다. Unity Editor는 스크립트 컴파일이 끝난 상태여야 한다.
+
+```powershell
+Rename-Item Training\results\stage3_full_team stage3_full_team_9f_try1_20261002
+mlagents-learn Training/config/stage3_full_team_refield.yaml --run-id=stage3_full_team --results-dir=Training/results
+```
+
+- `stage3_full_team_refield.yaml`은 위 이름의 보존 폴더에서 타자·투수·주자 `checkpoint.pt`를 `init_path`로 읽는다. 폴더 이름을 바꾸면 YAML의 세 경로도 같이 바꾼다. 스텝 수는 새 실행에서 0부터 다시 센다.
+- **TensorBoard로 확인:** `BaseballFielder`의 `Policy/Entropy`가 이전처럼 0.2 근처로 급격히 떨어지지 않는지 본다. `Defense/Fielded`가 오르고, `Play End/Runner Safe`·`Play/Outs`가 0에서 올라오며 `Play End/Timeout`이 내려가야 한다. 타자 쪽 `Plate Appearance/On Base`가 66~80%에서 내려오면 수비가 홈 앞 땅볼을 처리하기 시작한 것이다.
 
 ## 병렬 학습
 

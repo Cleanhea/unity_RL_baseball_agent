@@ -16,7 +16,7 @@ namespace BaseballSimulation
     [RequireComponent(typeof(BehaviorParameters), typeof(RunnerController))]
     public sealed class RunnerAgent : Agent
     {
-        public const int ObservationSize = 57;
+        public const int ObservationSize = 65;
         public const int DecisionCount = 3;
         public const int SlotCount = 4;
         private const float FieldScale = 60f;
@@ -106,7 +106,7 @@ namespace BaseballSimulation
             }
 
             int count = director != null ? director.FielderCount : 0;
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < FielderAgent.RoleCount; i++)
             {
                 Vector3 offset = i < count ? director.GetFielder(i).Position - self : Vector3.zero;
                 sensor.AddObservation(Mathf.Clamp(offset.x / FieldScale, -2f, 2f));

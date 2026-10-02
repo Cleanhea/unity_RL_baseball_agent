@@ -196,31 +196,34 @@ namespace BaseballSimulation
         public void RecordHalfInning(int runs) => Add("Half Inning/Runs", runs);
 
         /// <summary>
-        /// 수비가 결정한 플레이 하나(3단계, 파울 포함). 수비가 타구를 한 번이라도 잡았는지와 수비 그룹의 결과 보상·보조 보상 합.
-        /// 보조 보상 합은 그룹 누적 보상에 들어간 할인 없는 합이다. 할인 합은 −Φ(첫 결정)으로 행동과 무관하지만, 할인 없는 합에는
-        /// (γ−1)ΣΦ가 더해져 공·베이스에서 먼 상태가 길수록 오히려 커진다. 실력 지표로 쓰지 않는다.
+        /// 수비가 결정한 플레이 하나(3단계, 파울 포함). 포구 여부, 수비 그룹 결과·보조 보상 합, 개인 쫓기 보상 총합, 개인 자리 이탈 감점 합,
+        /// 개인 포구 보상 합. 그룹 보조 보상과 개인 쫓기 보상은 별도 지표로 기록하며 둘 다 할인 없는 합이다. 할인 합은 −Φ(첫 결정)으로 행동과 무관하지만,
+        /// 할인 없는 합에는 (γ−1)ΣΦ가 더해져 공·베이스에서 먼 상태가 길수록 오히려 커진다. 실력 지표로 쓰지 않는다.
         /// </summary>
-        public void RecordDefensePlay(bool fielded, float outcomeReward, float shapingReward)
+        public void RecordDefensePlay(bool fielded, float outcomeReward, float shapingReward, float chaseShapingReward, float positionReward,
+            float fieldingReward)
         {
             Add("Defense/Fielded", fielded ? 1f : 0f);
             Add("Defense Reward/Outcome", outcomeReward);
             Add("Defense Reward/Shaping", shapingReward);
+            Add("Defense Reward/Chase Shaping", chaseShapingReward);
+            Add("Defense Reward/Position", positionReward);
+            Add("Defense Reward/Fielding", fieldingReward);
         }
 
         /// <summary>
-        /// 자기 베이스로 주자가 온 수비 플레이 하나에서 내야수가 그 베이스를 밟았는지(1) 아닌지(0). 평균이 역할별 베이스 커버율이다.
-        /// 유격수는 2루를 맡는다(2루수가 없다).
+        /// 그 베이스로 주자가 온 수비 플레이 하나에서 어느 수비수든 그 베이스를 밟았는지(1) 아닌지(0). 평균이 베이스별 커버율이다.
         /// </summary>
-        public void RecordInfieldCover(FielderRole role, bool covered) => Add(InfieldCoverKey(role), covered ? 1f : 0f);
+        public void RecordBaseCover(BaseId baseId, bool covered) => Add(BaseCoverKey(baseId), covered ? 1f : 0f);
 
-        public static string InfieldCoverKey(FielderRole role)
+        public static string BaseCoverKey(BaseId baseId)
         {
-            switch (role)
+            switch (baseId)
             {
-                case FielderRole.FirstBase: return "Defense/Cover 1B";
-                case FielderRole.Shortstop: return "Defense/Cover 2B (SS)";
-                case FielderRole.ThirdBase: return "Defense/Cover 3B";
-                default: return "Defense/Cover " + role;
+                case BaseId.First: return "Defense/Cover 1B";
+                case BaseId.Second: return "Defense/Cover 2B";
+                case BaseId.Third: return "Defense/Cover 3B";
+                default: return "Defense/Cover Home";
             }
         }
 

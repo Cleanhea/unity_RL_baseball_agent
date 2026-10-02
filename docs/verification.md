@@ -1,5 +1,121 @@
 # Unity Editor 검증 절차
 
+## 12.29 수비 정지·즉시 송구 수정과 수비만 재학습 (2026-10-02 후속)
+
+사용자 요청: 12.28 구성으로 학습한 수비 분석 결과에 따라 수정 1~3을 적용하고, 처음부터가 아니라 수비만 다시 학습한다. 분석과 규칙은 [수비 정지·즉시 송구 수정](fielding-agents.md#수비-정지즉시-송구-수정-2026-10-02-후속)에 있다.
+
+**변경**
+
+- `FielderAgent.MoveActionGain` 3: 이동 행동에 3을 곱한다(출력 크기 1/3 이상 = 최고 속력).
+- `FielderAgent.WriteDiscreteActionMask`: `PlayDirector.CanThrow(index)`가 아니면 송구 1~4를 막는다. `CanThrow`는 타구가 살아 있고 그 수비수가 공을 쥐었는지다.
+- 3단계 네 YAML의 수비 `beta` 1e-3→5e-3. `Training/config/stage3_full_team_refield.yaml`: 타자·투수·주자는 `stage3_full_team_9f_try1_20261002` 보존 폴더의 체크포인트, 수비는 새로 시작한다.
+- `TrainingStageVerification`: 이동 배율 기대값, 모든 수비 결정의 송구 마스크 검사. `Training/verify_fielder_actions.py`: 네 YAML의 `beta` 0.005, 재시작 YAML의 `init_path` 검사.
+- **시도 후 뺀 것:** 포구 후 0.3 s 송구 준비 시간. 검증 A가 1루 포스 아웃에서 세이프로 바뀌었다. 타자주자는 일정한 7 m/s로 약 3.9 s에 1루에 닿고, 준비 시간 0일 때 포스 아웃이 3.90 s다. 준비 시간 측정 검사도 함께 뺐다.
+
+**실행 검증**
+
+- 학습 중 체크포인트 분석(ReferenceEvaluator, 확률 샘플링 노드를 뺀 부분 그래프): 750만·950만 스텝 수비 ONNX의 이동 세기 0.05~0.5, 공에 가장 가까운 수비수의 방향 오차 30~80°, 공을 쥔 8개 역할의 송구 안 함 확률 0~0.01. 체크포인트 `log_sigma` 기준 탐색 표준편차는 최고 속력의 약 6%였다.
+- 컴파일: `dotnet build` 오류 0.
+- 격리 Unity 6000.5.2f1 배치(씬 변경 없음): 3단계 `TrainingStageVerification` PASS. 9명 이동(배율 3, (0.3, 0.4)는 최고 속력, (0.06, 0.08)은 0.3배), 역할 임무, A~K 결과와 보상 값이 12.28과 같다. 송구 마스크는 공을 쥔 수비수의 128결정에서만 열렸고 나머지 모든 결정에서 막혔다. 스크립트 송구 4회. `MultiArenaVerification` PASS.
+- `python -B Training/verify_fielder_actions.py`: 전 항목 PASS(네 YAML 파싱, 수비 `beta` 0.005, 재시작 YAML의 세 `init_path`와 수비 `init_path` 없음).
+
+**확인하지 않은 항목**
+
+- 새 설정으로 실제 학습. 이동 배율과 `beta` 5e-3로 엔트로피 붕괴와 정지 정책을 벗어나는지는 학습해 봐야 한다.
+- 송구 마스크는 Unity가 학습기로 보내는 마스크와 ONNX `action_masks` 입력에 들어간다. 실제 학습기 연결 상태의 마스크 전달은 확인하지 않았다.
+- 1·2단계·`BenchmarkVerification`은 이번 변경과 관계없어 다시 실행하지 않았다(12.28 PASS).
+
+## 12.28 수비 9명·역할 임무 보상 개편 (2026-10-02)
+
+사용자 요청: 타구가 나오면 수비수가 모두 자기 영역을 벗어나므로, 수비 수를 실제와 같게 늘리고 보상 설계를 개편한다. 규칙은 [수비 9명·역할 임무 보상](fielding-agents.md#수비-9명역할-임무-보상-개편-2026-10-02)에 있다.
+
+**변경**
+
+- `FielderRole`: 투수·포수·1B·2B·3B·SS·LF·CF·RF 9개(값 = 관측 원-핫 위치 = 수비수 인덱스). `TrainingSceneBuilder.FielderLayout`이 9명을 배치한다. 투수 수비수는 투수 몸 자리에 서고 모양 부품을 넘겨받는다.
+- `FielderAgent` 관측 65→77(`RoleCount` 9), `RunnerAgent` 관측 57→65.
+- `PlayDirector`: 포수는 타구 후 0.3 s 동안 첫 포구를 하지 않는다(`CatcherFoulTipSeconds`).
+- `PlayOutcomeRewards`: `FieldingReward` 0.3(개인, 비포텐셜), `TryGetPositionDuty`·`SecondBaseCoverRole`·`CoverPotential`·`PositionReward`(반경 3/6/12 m, 0.005 /m/s, 상한 0.1 /s). `InfieldPotential`·`InfieldPositionReward`·`TryGetCoverBase`를 대체했다.
+- `TrainingEnvController`: `BallFielded` 첫 포구에 개인 보상, 베이스별 커버 지표. `TrainingStats`: `Defense Reward/Position`·`Fielding`, `Defense/Cover 1B|2B|3B|Home`.
+- `Stage3_FullTeam` 씬을 경기장 4개 × 9명으로 다시 만들었다(씬 GUID 유지). 1·2단계 씬과 `BaseballPlayground`는 바뀌지 않았다.
+- `TrainingStageVerification`: 역할 표 독립 계산, `VerifyPositionDuties`, 포구 보상 검사, 9명 스크립트 수비. C·D·J 안타를 분사각 −8°·발사각 12°·34 m/s로 바꿨다(투수가 정면 라이너를 잡고 중견수가 정면에 서 있기 때문). G·J는 홈인과 포수의 홈 태그 아웃을 모두 정상으로 본다.
+- `Training/verify_fielder_actions.py`의 합성 관측 크기 65→77.
+
+**실행 검증**
+
+- 컴파일: `dotnet build Assembly-CSharp-Editor.csproj`(출력은 임시 폴더) 오류 0.
+- 격리 Unity 6000.5.2f1 복사본 배치 Play Mode(MCP 패키지 제외, 학습기 포트와 다른 `--mlagents-port 5999`, `subst` 짧은 경로):
+  - **3단계 `TrainingStageVerification`:** 중립 투구, 9명 이동, 역할 임무 정지 검사, A~K 모두 PASS. 이후 코드 변경은 없다.
+    - A 유격수 땅볼: 1루 `ForceOut`, 포구 보상 +0.3이 유격수에게만, 자리 감점 합 −0.183. 타구 순간 커버 Φ_i는 1B −0.099, 2B −0.195(3루 쪽 타구라 2루 커버), 3B −0.078, 포수 0(홈 위).
+    - B 좌익수 `FlyOut`(4.30 s). C 좌중간 안타 `RunnerSafe`, 중견수 포구. C 쫓기 비교 +1.045 vs 제자리 +0.171, 1루수 커버 첫 10결정 +0.102 vs +0.010, 자리 감점 합 스크립트 −0.498 vs 제자리 −0.577. 제자리 수비는 `Timeout`, 포구 0.
+    - D 2루 세이프, E 3루수 파울 뜬공, F 2루 포스 후 1루 세이프(`Cover 2B`·`Cover 1B` = 1), G 희생플라이 1점, J 2루 주자 홈인, K 리터치 더블 아웃.
+  - **같은 코드의 첫 실행:** `MultiArenaVerification`(경기장 4개, 관측 33벡터 최대 차이 0.000008, 중단 0), `BenchmarkVerification`, 2단계·1단계 `TrainingStageVerification` PASS. 이 실행의 3단계 시나리오 실패는 검증 코드 문제였다. 플레이 종료 뒤 초기화된 `BattedBallFielded`를 읽었다. `Defense/Fielded` 지표 비교로 고친 뒤 3단계를 다시 실행해 PASS였다.
+- `python -B Training/verify_fielder_actions.py`(miniconda `mlagents`): 전 항목 PASS.
+
+**확인하지 않은 항목**
+
+- 실제 학습. 새 보상으로 포구율·자리 유지·아웃이 개선되는지는 학습해 봐야 한다. 반경 3/6/12 m, 계수 0.005, 포구 0.3은 시작값이다.
+- 사용자 원본 Editor에서의 씬 재로드·Console. 배치 실행 중 Unity가 같은 버전의 남아 있던 IL Post Processing 실행기(PID 27380)를 종료했다. 원본 Editor는 다음 컴파일 때 새로 띄운다.
+- 송구 30 m/s·포구 즉시 송구라 포수가 생긴 뒤 홈 승부가 수비 쪽으로 기울 수 있다(시나리오에서는 희생플라이·2루 주자 홈인이 성공했다). 송구 준비 시간은 후속 검토 대상이다.
+- 독립 실행 파일 재빌드와 기존 3단계 결과 폴더 이동은 하지 않았다.
+
+## 12.27 기존 학습 명령 연결·내야 자리 유지 (2026-10-01 후속)
+
+사용자 요청으로 기존 `mlagents-learn` 명령과 내야 자리 유지 신호를 모두 적용했다. 아래 12.26의 별도 `Training/train.py` 진입점 제한은 이 기록으로 대체한다.
+
+**변경**
+
+- `Training/mlagents_extensions`: ML-Agents 공식 trainer entry point로 수비 전용 POCA를 등록했다. 세 YAML의 `BaseballFielder`만 `baseball_fielder_poca`를 선택한다. 표준 학습기·다른 Agent의 행동 모델을 전역 수정하지 않는다. `Training/train.py`는 일반 CLI 별칭이며 자동 커리큘럼도 표준 CLI로 돌아갔다.
+- 현재 `C:\miniconda3\envs\mlagents`에 로컬 패키지를 editable로 등록했다. 다운로드·의존성 변경·설치된 ML-Agents 소스 편집 없이 수행했다. 다른 Python 환경에서는 학습 안내의 설치 명령을 한 번 실행한다.
+- `PlayOutcomeRewards.InfieldPositionReward`: 1루수·유격수(2루)·3루수가 공을 처리하지 않을 때, 담당 베이스 반경 3 m 바깥에 초당 `−min(0.05, 0.002 × 초과 거리)` 개인 감점. 첫 결정 뒤 고정 단계 시간으로 누적하고 정상 종료·중단에 환급하지 않는다. 외야수·쫓는 수비수·공 소유자·송구 중인 수비수는 제외한다.
+- `TrainingEnvController` 개인 지급·합 보존·초기화, `TrainingStats`의 `Defense Reward/Infield Position` 지표 및 역할 문서를 함께 갱신했다.
+
+**실행 검증**
+
+- `python -B Training/verify_fielder_actions.py`: PASS. 기존 CLI와 같은 plugin discovery/설정 파싱 경로에서 일반·재개·셀프플레이 YAML 모두 수비 확장, beta 0.001, gamma 0.99를 선택했다. 실제 POCA 정책·optimizer 생성과 엄격한 동일 체크포인트 키·가중치 로드가 통과했다.
+- 실제 ML-Agents 환경 행동·ONNX 확률/결정론 출력의 방향·크기, 작은/큰/영 벡터, 원본 optimizer 행동 유지, 타자·투수·주자 회귀, ONNX opset 9 checker·ReferenceEvaluator 모두 PASS.
+- 자동 커리큘럼 모의 실행: 2·3단계 일반·셀프플레이 모두 기존 `mlagents-learn` 실행 파일을 사용하고 포트·장치 인자를 보존했다. 호환용 `train.py --help`도 기존 옵션을 받았다.
+- 격리 Unity 6000.5.2f1 프로젝트에서 전체 컴파일 및 `TrainingStageVerification` 3단계 A~K, `MultiArenaVerification`, `BenchmarkVerification`, 2·1단계 검증 모두 PASS. 검증 포트를 별도로 두고 원본 프로젝트의 씬·에셋은 변경하지 않았다.
+- 자리 감점: 0/2.9/3/3.1/4/100 m에서 반경·거리·상한·시간 배율, 외야·쫓기 면제, 비유한/음수 시간과 비활성 플레이 0을 확인했다. 모든 시나리오 고정 단계에서 역할 면제·거리 감점을 독립 계산하고 개인 누적 보상과 정상 종료 합·새 지표를 비교했다.
+- 추가 담당 전환·중단 검사: 유격수→3루수 쫓기 변경 후 각자의 차분과 자리 감점만 지급됐다. 중단은 이미 준 자리 감점을 보존했고, 초기화 후 현재 합은 0이며 다음 첫 결정의 개인 누적 보상도 0이었다.
+- Unity 로그: 임시 검증 작업공간의 `unity-position-plugin-mapped.log`, `CHASE_BATCH_ALL_PASS`, `POSITION_EXTRA_PASS`. 공백 검사도 PASS.
+
+**확인하지 않은 항목**
+
+- 이 변경으로 새 성능 학습을 시작하거나 사용자의 실행 중인 학습기·Editor를 재시작하지 않았다. 위치 유지 개선·경기장 이탈 감소·반경/계수의 학습 적합성은 미검증이다.
+- 관측·행동 수·씬 직렬화는 유지했다. 기존 ONNX에는 과거 성분 클리핑이 남아 있으므로 새 코드로 다시 내보내야 한다. 별도 실행 파일도 새 Unity 코드로 다시 빌드한다.
+
+### 12.26 수비 탐색·개인 쫓기·이동 방향 수정 (2026-10-01)
+
+**변경.** 사용자 요청의 1~3번을 적용했다.
+
+- 일반·재개·셀프플레이 3단계 YAML의 `BaseballFielder.beta`: 5e-3→1e-3. 다른 Behavior 값은 그대로다.
+- `PlayOutcomeRewards.ChasePotential`: 첫 포구 전 가장 가까운 수비수 한 명의 개인 포텐셜, 계수 0.02→0.05 /m. 그룹 `DefensePotential`에서 쫓기를 뺐다.
+- `TrainingEnvController`: 개인 `AddReward`, 결정별 차분·담당 전환·정상 종료·중단 정산·초기화. `Defense Reward/Chase Shaping` 지표와 수비수별 마지막 플레이 합 조회를 더했다.
+- `FielderAgent`: 이동 성분별 클램프를 제거했다. 기존 `FielderController`의 벡터 크기 제한을 사용한다. `Training/train.py`는 ML-Agents 수비 출력도 `/3` 후 벡터 크기 제한으로 바꾸며, 자동 커리큘럼 3단계가 이 진입점을 사용한다. 관측·행동 수, 씬·GUID·직렬화 필드는 바꾸지 않았다.
+- `TrainingStageVerification`과 수비·학습·환경·구조 문서를 갱신했다. 4번 스크립트 추적 혼합은 변경 후 학습 결과를 보고 판단할 후속 수단이다.
+
+**실행 검증.**
+
+- Unity 6000.5.2f1 격리 복사본의 배치 Play Mode다. 원본 Editor·학습 결과를 조작하지 않았다. 복사본에서 MCP 패키지를 빼고 짧은 임시 드라이브 경로를 썼다. 런타임·Editor 코드 컴파일 오류는 없었다.
+- **3단계 `TrainingStageVerification`:** 중립 투구와 A~K 전부 PASS. 모든 인플레이 결정에서 개인 쫓기 포텐셜은 독립 계산한 가장 가까운 수비수·예상 지점과 일치했다. 그룹에는 포구·포스 커버만 들어갔다. 각 Agent 누적 개인 보상은 자기 쫓기 차분 + 자기 내야 차분과 1e-4 안에서 같았고, 정상 종료의 개인 합은 `−Φ_i(0) + (γ−1)ΣΦ_i(k≥1)`와 같았다. 새 플레이 첫 결정에 이전 개인 보상이 남지 않았다.
+- **C 방향 비교:** 첫 포구 전 68결정의 개인 쫓기 보상 총합은 스크립트 추적 +0.788, 제자리 −0.380이었다. 제자리 플레이는 `Timeout`이었다. 이 값은 실제 정책의 학습 성능이 아니라 같은 타구에 대한 스크립트 입력 검증이다.
+- **이동:** 수비수 다섯 명 모두 `(4,2)`, `(-2,4)`, `(-4,-2)`, `(2,-4)` 방향 비율과 최고 속력 유지, `(0.3,0.4)` 절반 속력, 0·NaN·Infinity 정지, 위치·속력 초기화가 PASS였다. Agent 행동→Director 명령→수비 몸 적분 경로를 사용했다.
+- **담당 전환 추가 검사:** 격리 하네스에서 유격수→3루수로 가장 가까운 수비수를 바꿨다. 이전 담당 포텐셜은 0, 새 담당만 음수였으며 개인 보상 지급이 각자 차분과 같았다.
+- **중단·초기화 추가 검사:** `AbortPlay`의 개인 합이 이전 합 + `γΦ_i(지금)−Φ_i(마지막 결정)`과 같았다. 초기화 후 개인 포텐셜·합은 0이었고, 다음 타구 첫 결정의 개인 누적 보상도 0이었다.
+- **3단계 `MultiArenaVerification`·`BenchmarkVerification`:** PASS. 병렬 800단계 중단 0회, 경기장 간 수비·주자 관측 최대 차이 0.000008. 기준 투수 2만 표본 존 통과율 50.8%.
+- **1·2단계 회귀:** `TrainingStageVerification` PASS. 전체 하네스 5개 작업과 추가 하네스 모두 최종 PASS까지 완료했다.
+- **YAML:** 설치된 ML-Agents 1.1.0의 `RunOptions` 스키마로 세 설정을 읽었다. 수비 `beta=0.001`, `gamma=0.99`가 모두 PASS다. `git diff --check`도 PASS다.
+- **Python 수비 행동:** 실제 ML-Agents `ActionModel`·Gaussian 분포로 큰·작은·0 벡터의 환경 행동과 확률·결정론 출력 방향을 검증했다. 정책 원본 `(4,2)`의 기본 출력 `(1,0.667)`이 새 진입점에서는 `(0.894,0.447)`이었다. 원본 optimizer 행동과 체크포인트 키, 타자·투수·주자 환경 행동·내보내기·로그 확률은 그대로였고 모든 비교가 PASS다.
+- **ONNX:** 실제 수비 행동 모델의 결정론 출력 헤드를 opset 9로 내보내 `onnx.checker`와 `ReferenceEvaluator`로 실행했다. 벡터 크기·방향이 Python 기대값과 1e-6 안에서 같았다. `train.py`와 `auto_curriculum.py`의 구문 검사도 PASS다. 재현 명령은 `python Training/verify_fielder_actions.py`다.
+- **실행 진입점:** `Training/train.py --help`가 기존 ML-Agents 옵션을 받았다. 자동 커리큘럼 명령을 모의 실행해 2단계 기존 진입점, 3단계 일반·셀프플레이의 새 진입점, 포트·장치 인자 보존이 모두 PASS였다. 실제 학습은 시작하지 않았다.
+
+**미검증·반영 조건.**
+
+- 표준 `mlagents-learn` 직접 실행과 옛 ONNX에는 내부 성분 제한이 남는다. 3단계는 새 `Training/train.py` 진입점을 사용하고 모델을 다시 내보내야 한다. 설치된 ML-Agents 1.1.0에서만 실행 검증했다.
+- 이 수정으로 새 학습을 실행하지 않았다. 표준편차 감소, 포구율·아웃 증가, 계수 0.05 /m의 학습 적합성은 아직 모른다. 담당 전환 포텐셜 변화는 초기 학습에 잡음이 될 수 있다.
+- 사용자 원본 Editor의 Console·실시간 Game 뷰는 확인하지 않았다.
+- 연결 중인 학습기는 재시작해야 새 `beta`를 읽는다. 독립 실행 파일은 재빌드해야 새 보상·이동 코드가 들어간다. 기존 학습 결과는 보존했고 학습기 재시작·플레이어 재빌드는 수행하지 않았다.
+
 ### 12.25 내야 역할 보조 보상 (2026-10-01)
 
 **질문과 확인.** 사용자가 1·2·3루수와 나머지 수비의 보상 설계에 차이가 있는지 물었다. 코드로 확인한 결과 차이는 없었다.

@@ -4,11 +4,11 @@
 
 [학습 단계](training-curriculum.md) 구현으로 책임이 다음처럼 나뉜다.
 
-`Training/auto_curriculum.py`는 Unity 외부에서 단계별 실행 파일 빌드·ML-Agents 학습기 실행·완료 확인·다음 단계 시작을 맡는다. 빌드는 `Training/UnityBuild/Editor/CurriculumPlayerBuild.cs`를 원본과 분리된 임시 Unity 프로젝트에 복사해 수행한다. 원본 Editor의 학습 씬과 `TrainingEnvController`는 자기 단계의 에피소드만 담당한다.
+`Training/auto_curriculum.py`는 Unity 외부에서 단계별 실행 파일 빌드·ML-Agents 학습기 실행·완료 확인·다음 단계 시작을 맡는다. 빌드는 `Training/UnityBuild/Editor/CurriculumPlayerBuild.cs`를 원본과 분리된 임시 Unity 프로젝트에 복사해 수행한다. 원본 Editor의 학습 씬과 `TrainingEnvController`는 자기 단계의 에피소드만 담당한다. 3단계도 일반 `mlagents-learn`으로 실행한다. `Training/mlagents_extensions`의 등록된 POCA 확장이 수비 YAML의 `baseball_fielder_poca`에서 선택되어 수비 정책의 환경 행동·ONNX 출력만 기존 `/3` 스케일 후 벡터 크기로 제한한다. 설치 패키지 소스를 수정하지 않고 저장소 코드를 Python 환경에 한 번 등록한다. 원본 optimizer 행동·체크포인트 구조는 유지한다.
 
 | 구성요소 | 책임 | 소유하지 않는 것 |
 | --- | --- | --- |
-| `TrainingEnvController` (씬마다 하나, `Systems/`) | 단계별 결정 요청(`Academy.AgentPreStep`), 1단계 스크립트 투구, 투구·타석 종료 판단과 초기화 요청, 타석 결과 보상, 수비·주자 그룹(`SimpleMultiAgentGroup`), 새 타석 무작위 상황, 2단계부터 고정 상대 평가 타석 선택(기준 투수 투구, 타석 사이 타자 정책의 모델 추론 전환·복원) | 경기 규칙·물리·판정·카운트 |
+| `TrainingEnvController` (씬마다 하나, `Systems/`) | 단계별 결정 요청(`Academy.AgentPreStep`), 1단계 스크립트 투구, 투구·타석 종료 판단과 초기화 요청, 타석 결과 보상, 수비·주자 그룹(`SimpleMultiAgentGroup`), 수비 결정마다 그룹 포구·포스 커버와 개인 쫓기·내야 커버 포텐셜 차분 지급·종료/중단 정산, 첫 수비 결정 뒤 고정 단계마다 역할 면제·거리·시간에 따른 개인 자리 감점과 합 기록, 새 타석 무작위 상황, 2단계부터 고정 상대 평가 타석 선택(기준 투수 투구, 타석 사이 타자 정책의 모델 추론 전환·복원) | 경기 규칙·물리·판정·카운트 |
 | `BenchmarkPitcher` (정적) | 평가 타석의 고정 구종 비율·구속·위치 분포 → `PitchCommand` | 투구 물리·판정 |
 | `GameSituation` (Director 소유) | 볼카운트·아웃·베이스 점유·득점, 볼넷·삼진·반 이닝, 플레이 결과 반영 | 물리·Agent |
 | `PlayDirector` | 기존 역할 전체와 새 명령(`RequestThrowPitch(PitchCommand)`, `RequestFielderMove/Throw`, `RequestScriptedBattedBall`), 포구·송구·포스/태그 아웃·`RunnerSafe` 판정 | Agent·보상 |

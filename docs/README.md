@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | 1 타자 | `Scenes/Training/Stage1_Batter` | 타자. 존 중앙 직구, 구속 120~150 km/h | [타자 Agent](batter-agent.md) |
 | 2 타자+투수 | `Scenes/Training/Stage2_BatterPitcher` | 타자·투수. 구종 5종·구속·위치 | [투수 Agent](pitcher-agent.md) |
-| 3 전체 | `Scenes/Training/Stage3_FullTeam` | 타자·주자·투수·수비 5명 | [수비·주루 Agent](fielding-agents.md) |
+| 3 전체 | `Scenes/Training/Stage3_FullTeam` | 타자·주자·투수·수비 9명 | [수비·주루 Agent](fielding-agents.md) |
 
 볼카운트·타석·주자 여러 명·결과 보상은 [상황 규칙](game-situation.md)에 있다. 단계 자동 전환과 실행 방법은 [Training/README.md](../Training/README.md)에 있다. `BaseballPlayground`는 Agent 없는 수동 조작 씬으로 되돌렸다.
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Policies;
@@ -16,6 +17,10 @@ namespace BaseballSimulation.Editor
     public static class TrainingStageVerification
     {
         private const int Plays = 12;
+        // 3단계 시나리오 C·D·J의 안타(분사각·발사각·속력). 투수(정면 18.7 m)와 내야수 머리 위를 넘고 중견수 정면을 피한다.
+        private const float SingleSprayDegrees = -8f;
+        private const float SingleLaunchDegrees = 12f;
+        private const float SingleSpeed = 34f;
         private const int SpreadSamples = 20000;
         /// <summary>격자 바깥 칸 투구 중 입체 존을 스쳐 스트라이크가 되어도 되는 최대 비율. 넘으면 바깥 칸이 볼이라는 설계가 깨진 것이다.</summary>
         private const float MaxOuterCellStrikeRate = 0.05f;
@@ -457,11 +462,15 @@ namespace BaseballSimulation.Editor
             PlayDirector director = controller.Director;
             Require(controller.Runners.Length == 4 && director.RunnerSlotCount == 4, "four runner slots (batter-runner + three base runners)");
             foreach (RunnerAgent runner in controller.Runners) Require(runner.enabled, $"runner {runner.name} passed its checks");
-            Require(controller.Fielders.Length == 5 && director.FielderCount == 5, "five fielders wired to the director");
+            Require(controller.Fielders.Length == FielderAgent.RoleCount && director.FielderCount == FielderAgent.RoleCount, "nine fielders wired to the director");
+            for (int i = 0; i < director.FielderCount; i++)
+                Require((int)director.GetFielder(i).Role == i, $"fielder {i} plays role {(FielderRole)i}");
             foreach (FielderAgent fielder in controller.Fielders)
                 Require(fielder.enabled && director.GetFielder(fielder.FielderIndex) == fielder.GetComponent<FielderController>(), $"fielder {fielder.name} passed its checks");
             var report = new StringBuilder();
             Require(controller.AbortedPlays == 0, "no aborted plays before scenarios");
+            throwsChecked = 0;
+            throwMaskOpen = 0;
 
             // 중립 행동: 존 중앙 스트라이크 3개로 삼진. 수비·주자 에피소드는 생기지 않는다.
             int plays = controller.CompletedPlays;
@@ -470,12 +479,18 @@ namespace BaseballSimulation.Editor
                 "neutral pitches end in a strikeout without fielding");
             report.AppendLine($"PASS neutral stage 3: 3 pitches, strikeout, no fielding episodes.");
 
+            VerifyFielderMovement(controller);
+            report.AppendLine($"PASS fielder movement: action direction, move gain x{FielderAgent.MoveActionGain:0} (output 1/3 = full speed), unit-circle speed limit, " +
+                "small/zero/non-finite inputs and reset for all nine fielders.");
+            VerifyPositionDuties(controller);
+            report.AppendLine("PASS position duties: role table (C home, 1B first, 3B third, 2B/SS second by ball side and backup, P first while 1B chases, " +
+                "zones 6/12 m), 3 m base allowance, distance/time scaling, 0.1/s cap, cover potential only for base duties, chaser exemption, inactive state.");
             FieldLayout field = director.FieldLayout;
             var empty = new Situation(false, false, false, 0);
             int firstBase = FielderIndexOf(director, FielderRole.FirstBase);
-            string cover1B = TrainingStats.InfieldCoverKey(FielderRole.FirstBase);
-            string cover2B = TrainingStats.InfieldCoverKey(FielderRole.Shortstop);
-            string cover3B = TrainingStats.InfieldCoverKey(FielderRole.ThirdBase);
+            string cover1B = TrainingStats.BaseCoverKey(BaseId.First);
+            string cover2B = TrainingStats.BaseCoverKey(BaseId.Second);
+            string cover3B = TrainingStats.BaseCoverKey(BaseId.Third);
             int cover2BCount = controller.Stats.CountOf(cover2B), cover3BCount = controller.Stats.CountOf(cover3B);
 
             var a = PlayScenario(controller, empty, ExitVelocity(-13.8f, -6f, 28f), null);
@@ -491,56 +506,63 @@ namespace BaseballSimulation.Editor
             RequireStat(controller, "Defense/Fielded", 1f);
             RequireStat(controller, "Defense Reward/Outcome", controller.LastDefenseOutcomeReward);
             RequireStat(controller, "Defense Reward/Shaping", controller.LastDefenseShapingReward);
+            RequireStat(controller, "Defense Reward/Chase Shaping", controller.LastChaseShapingReward);
+            RequireStat(controller, "Defense Reward/Fielding", PlayOutcomeRewards.FieldingReward);
             Require(a.fieldedDecision > 0 && a.potentials[a.fieldedDecision] - a.potentials[a.fieldedDecision - 1] > 0.8f * PlayOutcomeRewards.DefenseFieldedValue,
                 "first fielding raises the defense potential by about the fielded value");
             report.AppendLine($"PASS A grounder to SS: {Describe(a.play)} at {a.seconds:F2} s, fielded by {a.fielder}, defense {controller.LastDefenseOutcomeReward:+0.00;-0.00}, runners {controller.LastRunnerOutcomeReward:+0.00;-0.00}, batter {controller.LastBatterOutcomeReward:+0.00;-0.00}.");
             report.AppendLine($"PASS A defense shaping: potential {a.potentials[0]:+0.000;-0.000} at contact, " +
                 $"{a.potentials[a.fieldedDecision - 1]:+0.000;-0.000} → {a.potentials[a.fieldedDecision]:+0.000;-0.000} at the first fielding, " +
                 $"play sum {controller.LastDefenseShapingReward:+0.000;-0.000} over {a.potentials.Count} decisions.");
-            // 내야 역할 보조 보상: 타자주자가 1루로 달리는 동안 1루수가 1루에 있었다. 2·3루로 향한 주자가 없어 그 지표는 기록되지 않는다.
+            // 역할 임무 보조 보상: 타자주자가 1루로 달리는 동안 1루수가 1루에 있었다. 2·3루로 향한 주자가 없어 그 지표는 기록되지 않는다.
             RequireStat(controller, cover1B, 1f);
             Require(controller.Stats.CountOf(cover2B) == cover2BCount && controller.Stats.CountOf(cover3B) == cover3BCount,
                 "A records no 2B/3B cover because no runner heads there");
-            report.AppendLine($"PASS A infield role shaping: Φ_i at contact {DescribeInfield(director, a.infield[0])}, play sums {DescribeInfieldSums(controller)}; " +
-                $"outfielders 0, holder/thrower/chaser rules hold at all {a.infield.Count} decisions, {cover1B} = 1.");
+            report.AppendLine($"PASS A role duty shaping: cover Φ_i at contact {DescribeCover(director, a.cover[0])}, play sums {DescribeCoverSums(controller)}; " +
+                $"role table holds at all {a.cover.Count} decisions, {cover1B} = 1, fielding reward {PlayOutcomeRewards.FieldingReward:+0.0} to {a.fielder} only, " +
+                $"position penalty sum {controller.LastPositionReward:+0.000;-0.000}.");
 
             var b = PlayScenario(controller, empty, ExitVelocity(-19f, 32f, 34f), null);
-            Require(b.play.EndReason == PitchEndReason.FlyOut && b.play.Outs == 1, $"B fly ball to left-center is caught (got {Describe(b.play)})");
+            Require(b.play.EndReason == PitchEndReason.FlyOut && b.play.Outs == 1, $"B fly ball to left field is caught (got {Describe(b.play)})");
             RequireOutcomeRewards(controller);
-            report.AppendLine($"PASS B fly to LCF: {Describe(b.play)} at {b.seconds:F2} s by {b.fielder}, defense {controller.LastDefenseOutcomeReward:+0.00;-0.00}, runners {controller.LastRunnerOutcomeReward:+0.00;-0.00}.");
+            report.AppendLine($"PASS B fly to left: {Describe(b.play)} at {b.seconds:F2} s by {b.fielder}, defense {controller.LastDefenseOutcomeReward:+0.00;-0.00}, runners {controller.LastRunnerOutcomeReward:+0.00;-0.00}.");
 
-            var c = PlayScenario(controller, empty, ExitVelocity(0f, 8f, 34f), null);
+            // 투수·내야수 머리 위로 넘어가 좌중간 외야에 떨어지는 안타. 중견수가 정면에 서 있지 않아 제자리 수비는 잡지 못한다.
+            Vector3 single = ExitVelocity(SingleSprayDegrees, SingleLaunchDegrees, SingleSpeed);
+            var c = PlayScenario(controller, empty, single, null);
             Require(c.play.EndReason == PitchEndReason.RunnerSafe && c.play.BatterBases == 1 && c.situation.OnFirst,
-                $"C single up the middle ends safe at first (got {Describe(c.play)})");
+                $"C single to left-center ends safe at first (got {Describe(c.play)})");
             RequireOutcomeRewards(controller);
             RequireStat(controller, "Plate Appearance/On Base", 1f);
             RequireStat(controller, "Play/Batter Bases", 1f);
             RequireStat(controller, "Play End/Runner Safe", 1f);
             RequireStat(controller, "Matchup/Batter Win", 1f);
             RequireStat(controller, cover1B, 1f);
-            report.AppendLine($"PASS C single up the middle: {Describe(c.play)} at {c.seconds:F2} s, fielded by {c.fielder}, defense {controller.LastDefenseOutcomeReward:+0.00;-0.00}, runners {controller.LastRunnerOutcomeReward:+0.00;-0.00}, batter {controller.LastBatterOutcomeReward:+0.00;-0.00}.");
+            report.AppendLine($"PASS C single to left-center: {Describe(c.play)} at {c.seconds:F2} s, fielded by {c.fielder}, defense {controller.LastDefenseOutcomeReward:+0.00;-0.00}, runners {controller.LastRunnerOutcomeReward:+0.00;-0.00}, batter {controller.LastBatterOutcomeReward:+0.00;-0.00}.");
 
             // 보조 보상 방향: 같은 타구에서 공을 쫓고 1루를 덮는 스크립트 수비가 제자리 수비보다 첫 포구 전까지 보조 보상을 더 받는다.
-            var still = PlayScenario(controller, empty, ExitVelocity(0f, 8f, 34f), null, scriptedDefense: false);
+            var still = PlayScenario(controller, empty, single, null, scriptedDefense: false);
             RequireStat(controller, "Defense/Fielded", 0f);
+            RequireStat(controller, "Defense Reward/Fielding", 0f);
             int window = c.fieldedDecision - 1;
             Require(window >= 1 && still.potentials.Count > window && Mathf.Approximately(c.potentials[0], still.potentials[0]),
                 "C and the standing-still replay start from the same potential");
-            float chasing = ShapingSum(c.potentials, window), standing = ShapingSum(still.potentials, window);
+            float chasing = ShapingSum(SumSamples(c.chase), window), standing = ShapingSum(SumSamples(still.chase), window);
             Require(chasing > standing + 0.01f, $"chasing earns more shaping before the first fielding than standing still ({chasing:+0.000} vs {standing:+0.000})");
             report.AppendLine($"PASS shaping direction on C's ball: first {window} decisions chasing {chasing:+0.000;-0.000} vs standing still {standing:+0.000;-0.000}; " +
                 $"standing still ends {Describe(still.play)}, play sum {controller.LastDefenseShapingReward:+0.000;-0.000}.");
             // 1루수 개인 보조 보상 방향: 1루로 뛰어가는 쪽이 제자리보다 첫 1초 동안 더 받는다. 제자리 1루수는 1루를 밟지 못한다.
             RequireStat(controller, cover1B, 0f);
-            int infieldWindow = Mathf.Min(window, 10);
-            float coverRunning = ShapingSum(Column(c.infield, firstBase), infieldWindow);
-            float coverStanding = ShapingSum(Column(still.infield, firstBase), infieldWindow);
+            int coverWindow = Mathf.Min(window, 10);
+            float coverRunning = ShapingSum(Column(c.cover, firstBase), coverWindow);
+            float coverStanding = ShapingSum(Column(still.cover, firstBase), coverWindow);
             Require(coverRunning > coverStanding + 0.03f,
-                $"1B running to first earns more infield shaping than standing still ({coverRunning:+0.000} vs {coverStanding:+0.000})");
-            report.AppendLine($"PASS 1B cover direction on C's ball: first {infieldWindow} decisions running to first {coverRunning:+0.000;-0.000} " +
-                $"vs standing still {coverStanding:+0.000;-0.000}; {cover1B} 1 vs 0.");
+                $"1B running to first earns more cover shaping than standing still ({coverRunning:+0.000} vs {coverStanding:+0.000})");
+            report.AppendLine($"PASS 1B cover direction on C's ball: first {coverWindow} decisions running to first {coverRunning:+0.000;-0.000} " +
+                $"vs standing still {coverStanding:+0.000;-0.000}; {cover1B} 1 vs 0; position penalty sum scripted {c.positionRewards.Sum():+0.000;-0.000} " +
+                $"vs standing {still.positionRewards.Sum():+0.000;-0.000}.");
 
-            var d = PlayScenario(controller, empty, ExitVelocity(0f, 8f, 34f),
+            var d = PlayScenario(controller, empty, single,
                 (slot, r) => slot == 0 && r.Phase == RunnerPhase.Holding && r.LastTouchedBase == BaseId.First ? RunnerDecision.Advance : (RunnerDecision?)null);
             Require((d.play.EndReason == PitchEndReason.TagOut && d.play.Outs == 1) || (d.play.EndReason == PitchEndReason.RunnerSafe && d.play.BatterBases == 2),
                 $"D stretch for second ends in a tag out or safe at second (got {Describe(d.play)})");
@@ -562,19 +584,21 @@ namespace BaseballSimulation.Editor
             // 1루 주자가 2루로 밀려나므로 유격수가 2루를, 타자주자 때문에 1루수가 1루를 밟는다.
             RequireStat(controller, cover2B, 1f);
             RequireStat(controller, cover1B, 1f);
-            report.AppendLine($"PASS F infield role shaping: play sums {DescribeInfieldSums(controller)}, {cover2B} = 1, {cover1B} = 1.");
+            report.AppendLine($"PASS F role duty shaping: play sums {DescribeCoverSums(controller)}, {cover2B} = 1, {cover1B} = 1.");
             report.AppendLine($"PASS F runner on 1B, grounder to SS: {Describe(f.play)}, then {Describe(f.situation)}, defense {controller.LastDefenseOutcomeReward:+0.00;-0.00}, runners {controller.LastRunnerOutcomeReward:+0.00;-0.00}, batter {controller.LastBatterOutcomeReward:+0.00;-0.00}.");
 
-            // G) 3루 주자 1아웃, 좌중간 뜬공: 포구 후 태그업으로 홈인(희생플라이).
+            // G) 3루 주자 1아웃, 좌익수 뜬공: 포구 후 태그업. 포수가 홈을 맡으므로 홈인(희생플라이) 또는 홈 태그 아웃(3아웃)이다.
             var g = PlayScenario(controller, new Situation(false, false, true, 1), ExitVelocity(-19f, 32f, 34f),
                 (slot, r) => slot == 3 && director.BattedBallFielded && r.Phase == RunnerPhase.Holding && r.LastTouchedBase == BaseId.Third
                     ? RunnerDecision.Advance : (RunnerDecision?)null);
-            Require(g.play.Outs == 1 && g.play.Runs == 1 && g.situation.Outs == 2 && g.situation.RunsThisHalfInning == 1,
-                $"G sacrifice fly: catch, tag up and score (got {Describe(g.play)}, {Describe(g.situation)})");
+            bool sacrificeFly = g.play.Outs == 1 && g.play.Runs == 1 && g.situation.Outs == 2 && g.situation.RunsThisHalfInning == 1;
+            bool thrownOutAtHome = g.play.Outs == 2 && g.play.Runs == 0 && g.play.RunnerOuts == 1 && g.play.EndReason == PitchEndReason.TagOut;
+            Require(g.first.Contains("(air)") && (sacrificeFly || thrownOutAtHome),
+                $"G fly with runner on third: catch, tag up, then score or tagged out at home (got {Describe(g.play)}, {Describe(g.situation)})");
             RequireOutcomeRewards(controller);
-            RequireStat(controller, "Play/Runs", 1f);
-            RequireStat(controller, "Play/Outs", 1f);
-            report.AppendLine($"PASS G sac fly: {Describe(g.play)}, then {Describe(g.situation)}, batter {controller.LastBatterOutcomeReward:+0.00;-0.00}, runners {controller.LastRunnerOutcomeReward:+0.00;-0.00}.");
+            RequireStat(controller, "Play/Runs", g.play.Runs);
+            RequireStat(controller, "Play/Outs", g.play.Outs);
+            report.AppendLine($"PASS G tag-up from third ({(sacrificeFly ? "sac fly" : "thrown out at home")}): {Describe(g.play)}, then {Describe(g.situation)}, batter {controller.LastBatterOutcomeReward:+0.00;-0.00}, runners {controller.LastRunnerOutcomeReward:+0.00;-0.00}.");
 
             // H) 만루 볼넷은 밀어내기 1점.
             SetSituation(controller, new Situation(true, true, true, 0));
@@ -603,13 +627,15 @@ namespace BaseballSimulation.Editor
                 $"I third out clears the half-inning (got {Describe(newInning)})");
             report.AppendLine($"PASS I two-out strikeout: new half-inning {Describe(newInning)}.");
 
-            // J) 2루 주자, 가운데 안타: 주자가 멈출 때마다 진루해 홈인, 타자는 1루.
-            var j = PlayScenario(controller, new Situation(false, true, false, 0), ExitVelocity(0f, 8f, 34f),
+            // J) 2루 주자, C와 같은 안타: 주자가 멈출 때마다 진루한다. 타자는 1루. 포수가 홈을 맡으므로 홈인 또는 홈 태그 아웃이다.
+            var j = PlayScenario(controller, new Situation(false, true, false, 0), single,
                 (slot, r) => slot == 2 && r.Phase == RunnerPhase.Holding ? RunnerDecision.Advance : (RunnerDecision?)null);
-            Require(j.play.Runs == 1 && j.play.BatterBases == 1 && j.situation.OnFirst && !j.situation.OnSecond && j.situation.RunsThisHalfInning == 1,
-                $"J runner on second scores on a single (got {Describe(j.play)}, {Describe(j.situation)})");
+            bool rbi = j.play.Runs == 1 && j.play.Outs == 0 && j.situation.RunsThisHalfInning == 1;
+            bool outAtHome = j.play.Runs == 0 && j.play.Outs == 1 && j.play.RunnerOuts == 1 && j.situation.Outs == 1;
+            Require((rbi || outAtHome) && j.play.BatterBases >= 1 && j.situation.OnFirst != (j.play.BatterBases >= 2) && !j.situation.OnThird,
+                $"J runner on second scores or is thrown out at home on a single (got {Describe(j.play)}, {Describe(j.situation)})");
             RequireOutcomeRewards(controller);
-            report.AppendLine($"PASS J RBI single: {Describe(j.play)}, then {Describe(j.situation)}, batter {controller.LastBatterOutcomeReward:+0.00;-0.00}, runners {controller.LastRunnerOutcomeReward:+0.00;-0.00}, defense {controller.LastDefenseOutcomeReward:+0.00;-0.00}.");
+            report.AppendLine($"PASS J single with runner on second ({(rbi ? "RBI" : "thrown out at home")}): {Describe(j.play)}, then {Describe(j.situation)}, batter {controller.LastBatterOutcomeReward:+0.00;-0.00}, runners {controller.LastRunnerOutcomeReward:+0.00;-0.00}, defense {controller.LastDefenseOutcomeReward:+0.00;-0.00}.");
 
             // K) 1루 주자, 유격수 뜬공: 포스로 달리던 주자는 리터치해야 한다. 1루로 송구하면 더블 아웃(늦으면 한 개).
             var k = PlayScenario(controller, new Situation(true, false, false, 0), ExitVelocity(-13.8f, 55f, 22f), null);
@@ -620,6 +646,9 @@ namespace BaseballSimulation.Editor
 
             Require(controller.AbortedPlays == 0, "no aborted plays");
             RequireStat(controller, "Env/Aborted Play", 0f);
+            Require(throwsChecked > 0 && throwMaskOpen > 0, "scenarios include throws and decisions with the throw options open");
+            report.AppendLine($"PASS throw mask: throw options masked at every fielder decision except {throwMaskOpen} ball-holder decisions; " +
+                $"{throwsChecked} scripted throws went out from the holder.");
             report.AppendLine($"PASS stage 3 TensorBoard stats: play, plate-appearance and half-inning values match the scenarios ({controller.Stats.RecordCount} values).");
             return report.ToString();
         }
@@ -661,7 +690,7 @@ namespace BaseballSimulation.Editor
         /// 결과 요약, 다음 타석 시작 상황, 결정 시점 포텐셜과 첫 포구 뒤 첫 결정의 번호(없으면 -1)를 돌려준다.
         /// </summary>
         private static (PlaySummary play, SituationSnapshot situation, float seconds, string fielder, string first, Vector3 catchPoint,
-            List<float> potentials, int fieldedDecision, List<float[]> infield) PlayScenario(
+            List<float> potentials, int fieldedDecision, List<float[]> cover, List<float[]> chase, float[] positionRewards) PlayScenario(
             TrainingEnvController controller, Situation situation, Vector3 exitVelocity, Func<int, RunnerSnapshot, RunnerDecision?> runnerPolicy,
             bool scriptedDefense = true)
         {
@@ -670,13 +699,17 @@ namespace BaseballSimulation.Editor
             string firstFielder = "none";
             Vector3 firstCatch = Vector3.zero;
             var potentials = new List<float>();
-            var infield = new List<float[]>();
+            var cover = new List<float[]>();
+            var chase = new List<float[]>();
+            var positionRewards = new float[director.FielderCount];
+            var fieldingRewards = new float[director.FielderCount];
             int fieldedDecision = -1;
             int fieldSteps = 0;
             void OnFielded(int index, bool inAir)
             {
                 if (firstFielder != "none") return;
                 firstFielder = director.GetFielder(index).name + (inAir ? " (air)" : "");
+                fieldingRewards[index] += PlayOutcomeRewards.FieldingReward;
                 firstCatch = director.GetSnapshot().BallPosition;
             }
             director.BallFielded += OnFielded;
@@ -692,13 +725,27 @@ namespace BaseballSimulation.Editor
                     Unity.MLAgents.Academy.Instance.EnvironmentStep();
                     if (director.State == PlayState.BattedBallInFlight)
                     {
+                        float[] positionStep = SamplePositionRewards(director);
+                        if (fieldSteps > 0)
+                            for (int f = 0; f < positionRewards.Length; f++) positionRewards[f] += positionStep[f];
                         // Director 고정 단계 전이라 컨트롤러가 이번 단계 결정 직전에 본 상태와 같다.
                         if (fieldSteps++ % controller.FieldDecisionInterval == 0)
                         {
-                            potentials.Add(PlayOutcomeRewards.DefensePotential(director));
-                            infield.Add(SampleInfieldPotentials(director));
+                            potentials.Add(SampleGroupPotential(director));
+                            cover.Add(SampleCoverPotentials(director));
+                            chase.Add(SampleChasePotentials(director));
+                            // Agent 누적 개인 보상에는 그룹 보상이 없다. 개인 차분·자리 유지 감점·포구 보상만 지급됐는지 확인한다.
+                            for (int j = 0; j < controller.Fielders.Length; j++)
+                            {
+                                int f = controller.Fielders[j].FielderIndex;
+                                float expected = ShapingSum(Column(chase, f), chase.Count - 1) + ShapingSum(Column(cover, f), cover.Count - 1) +
+                                    positionRewards[f] + fieldingRewards[f];
+                                Require(Mathf.Abs(controller.Fielders[j].GetCumulativeReward() - expected) < 1e-4f,
+                                    $"{controller.Fielders[j].name} receives only its own chase, cover shaping, position and fielding rewards");
+                            }
                             if (fieldedDecision < 0 && director.BattedBallFielded) fieldedDecision = potentials.Count - 1;
                         }
+                        if (fieldSteps % controller.FieldDecisionInterval == 1) RequireThrowMasks(controller);
                         if (scriptedDefense) ScriptedDefense(director);
                         for (int slot = 0; slot < director.RunnerSlotCount && runnerPolicy != null; slot++)
                         {
@@ -707,15 +754,20 @@ namespace BaseballSimulation.Editor
                         }
                     }
                     if (director.State == PlayState.Ended && seconds == 0f) seconds = director.GetSnapshot().ElapsedSeconds;
+                    int holderBefore = director.BallHolder;
                     BatterAgentVerification.Advance(director);
+                    if (holderBefore >= 0 && director.LastThrower == holderBefore && director.BallHolder != holderBefore) throwsChecked++;
                 }
                 Require(controller.CompletedPlays == before + 1 && controller.LastPlayHadFielding, "scenario play finished with fielding");
                 PlaySummary play = controller.LastPlaySummary;
                 Require(play.Resolved, "play resolved");
                 RequireDefenseShaping(controller, potentials);
-                RequireInfieldShaping(controller, infield);
+                RequireCoverShaping(controller, cover);
+                RequireChaseShaping(controller, chase);
+                RequirePositionRewards(controller, positionRewards);
+                RequireFieldingRewards(controller, fieldingRewards);
                 BatterAgentVerification.FinishCurrentPlateAppearance(controller);
-                return (play, director.GetSituation(), seconds, firstFielder, firstFielder, firstCatch, potentials, fieldedDecision, infield);
+                return (play, director.GetSituation(), seconds, firstFielder, firstFielder, firstCatch, potentials, fieldedDecision, cover, chase, positionRewards);
             }
             finally
             {
@@ -723,10 +775,43 @@ namespace BaseballSimulation.Editor
             }
         }
 
+        private static int throwsChecked;
+        private static int throwMaskOpen;
+
+        private sealed class MaskRecorder : IDiscreteActionMask
+        {
+            public readonly bool[] Enabled = { true, true, true, true, true };
+            public void SetActionEnabled(int branch, int actionIndex, bool isEnabled)
+            {
+                if (branch == 0) Enabled[actionIndex] = isEnabled;
+            }
+        }
+
+        /// <summary>
+        /// 결정 시점의 송구 마스크: 송구 안 함(0)은 늘 허용하고, 송구(1~4)는 그 수비수가 공을 쥐었을 때만 허용한다.
+        /// Academy 단계(결정·마스크 수집) 직후, Director 고정 단계 전이라 같은 상태를 본다.
+        /// </summary>
+        private static void RequireThrowMasks(TrainingEnvController controller)
+        {
+            PlayDirector director = controller.Director;
+            foreach (FielderAgent agent in controller.Fielders)
+            {
+                var mask = new MaskRecorder();
+                agent.WriteDiscreteActionMask(mask);
+                bool expected = director.State == PlayState.BattedBallInFlight && director.BallHolder == agent.FielderIndex;
+                Require(mask.Enabled[0], $"{agent.name} may always choose not to throw");
+                for (int target = 1; target < FielderAgent.ThrowTargetCount; target++)
+                    Require(mask.Enabled[target] == expected, $"{agent.name} throw option {target} is enabled only while holding the ball");
+                if (expected) throwMaskOpen++;
+            }
+        }
+
         /// <summary>
         /// 검증용 단순 수비. 공을 가진 수비수는 ① 아직 도착하지 않은 가장 앞선 포스 베이스가 12 m 안이면 직접 밟고, 멀면 그 베이스로 던진다.
         /// ② 포스가 없으면 리터치해야 하는 주자의 원래 베이스, ③ 없으면 달리는 주자가 향하는 베이스로 던진다(1루수는 1루를 밟는다).
-        /// 공이 살아 있으면 예상 지점에 가장 가까운 수비수가 쫓고, 1루수는 1루, 유격수는 주자가 2루로 가면 2루, 3루수는 3루를 맡는다.
+        /// 공이 살아 있으면 예상 지점에 가장 가까운 수비수가 쫓는다. 포수는 홈, 1루수는 1루(1루수가 공을 처리하면 투수가 1루),
+        /// 주자가 2루로 가거나 1루 주자가 포스일 때 2루는 3루 쪽 타구면 2루수·1루 쪽이면 유격수(그 수비수가 공을 처리하면 다른 쪽),
+        /// 주자가 3루로 가거나 2루 주자가 포스일 때 3루수는 3루를 맡는다. 나머지는 제자리에 선다.
         /// </summary>
         private static void ScriptedDefense(PlayDirector director)
         {
@@ -749,6 +834,15 @@ namespace BaseballSimulation.Editor
                 float distance = Flat(director.GetFielder(i).Position - chase).magnitude;
                 if (distance < best) { best = distance; chaser = i; }
             }
+            bool Handling(FielderRole role)
+            {
+                int index = FielderIndexOf(director, role);
+                return index == chaser || index == holder;
+            }
+            bool rightSide = director.GetBattedBallSnapshot().SprayAngleDegrees > 0f;
+            FielderRole secondCover = rightSide ? FielderRole.Shortstop : FielderRole.SecondBase;
+            if (Handling(secondCover)) secondCover = rightSide ? FielderRole.SecondBase : FielderRole.Shortstop;
+            bool firstBaseHandling = Handling(FielderRole.FirstBase);
             for (int i = 0; i < director.FielderCount; i++)
             {
                 FielderController fielder = director.GetFielder(i);
@@ -763,8 +857,10 @@ namespace BaseballSimulation.Editor
                     }
                 }
                 else if (i == chaser) goal = chase;
+                else if (fielder.Role == FielderRole.Catcher) goal = field.HomePosition;
                 else if (fielder.Role == FielderRole.FirstBase) goal = field.FirstBasePosition;
-                else if (fielder.Role == FielderRole.Shortstop && (toSecond || director.IsRunnerForced(1))) goal = field.SecondBasePosition;
+                else if (fielder.Role == FielderRole.Pitcher && firstBaseHandling) goal = field.FirstBasePosition;
+                else if (fielder.Role == secondCover && (toSecond || director.IsRunnerForced(1))) goal = field.SecondBasePosition;
                 else if (fielder.Role == FielderRole.ThirdBase && (toThird || director.IsRunnerForced(2))) goal = field.ThirdBasePosition;
                 Vector3 toGoal = Flat(goal - fielder.Position);
                 float gap = toGoal.magnitude;
@@ -859,45 +955,350 @@ namespace BaseballSimulation.Editor
         }
 
         /// <summary>
-        /// 결정 시점의 수비수별 개인 포텐셜 Φ_i를 모으며 규칙을 따로 확인한다. 외야수, 공을 쥔 수비수, 자기 송구가 날아가는 수비수는 0이다.
-        /// 나머지 내야수는 −계수 × 자기 베이스와의 수평 거리다. 예외는 첫 포구 전 공을 쫓는 수비수 한 명뿐이고 그 값은 0이다.
+        /// 역할 임무를 규칙 표대로 독립 계산한다. 쫓는 수비수도 예상 지점으로 따로 구한다. 임무가 없으면(쫓기·공 소유·송구 후) false다.
+        /// 포수 홈, 1루수 1루, 3루수 3루(반경 3 m 베이스 커버). 투수는 1루수가 공을 처리하면 1루, 아니면 시작 위치 6 m.
+        /// 2루수·유격수는 분사각 ≤ 0이면 2루수, > 0이면 유격수가 2루(먼저인 쪽이 처리 중이면 다른 쪽), 나머지는 시작 위치 6 m. 외야수는 12 m.
         /// </summary>
-        private static float[] SampleInfieldPotentials(PlayDirector director)
+        private static bool ExpectedDuty(PlayDirector director, int f, out Vector3 anchor, out float radius, out bool coversBase)
+        {
+            anchor = Vector3.zero;
+            radius = 0f;
+            coversBase = false;
+            int chaser = director.BattedBallFielded ? -1 : NearestFielder(director, ExpectedChasePoint(director), out _);
+            bool Busy(int i) => i == chaser || director.BallHolder == i || (director.BallHolder < 0 && director.LastThrower == i);
+            int IndexOf(FielderRole role)
+            {
+                for (int i = 0; i < director.FielderCount; i++)
+                    if (director.GetFielder(i).Role == role) return i;
+                return -1;
+            }
+            if (Busy(f)) return false;
+            FieldLayout field = director.FieldLayout;
+            FielderController body = director.GetFielder(f);
+            BaseId? baseDuty = null;
+            switch (body.Role)
+            {
+                case FielderRole.Catcher: baseDuty = BaseId.Home; break;
+                case FielderRole.FirstBase: baseDuty = BaseId.First; break;
+                case FielderRole.ThirdBase: baseDuty = BaseId.Third; break;
+                case FielderRole.Pitcher: if (Busy(IndexOf(FielderRole.FirstBase))) baseDuty = BaseId.First; break;
+                case FielderRole.SecondBase:
+                case FielderRole.Shortstop:
+                    Vector3 exit = director.GetBattedBallSnapshot().ExitVelocity;
+                    bool rightSide = Mathf.Atan2(exit.x, exit.z) > 0f;
+                    FielderRole preferred = rightSide ? FielderRole.Shortstop : FielderRole.SecondBase;
+                    FielderRole other = rightSide ? FielderRole.SecondBase : FielderRole.Shortstop;
+                    FielderRole coverer = Busy(IndexOf(preferred)) && !Busy(IndexOf(other)) ? other : preferred;
+                    if (coverer == body.Role) baseDuty = BaseId.Second;
+                    break;
+            }
+            if (baseDuty.HasValue)
+            {
+                anchor = field.GetBasePosition(baseDuty.Value);
+                radius = 3f;
+                coversBase = true;
+                return true;
+            }
+            anchor = body.HomeSpot;
+            radius = body.Role == FielderRole.LeftField || body.Role == FielderRole.CenterField || body.Role == FielderRole.RightField ? 12f : 6f;
+            return true;
+        }
+
+        /// <summary>결정 시점의 베이스 커버 개인 포텐셜 Φ_i를 모으며 역할 표와 비교한다. 베이스 커버 임무만 −계수 × 베이스 거리이고 나머지는 0이다.</summary>
+        private static float[] SampleCoverPotentials(PlayDirector director)
         {
             var sample = new float[director.FielderCount];
-            int chasers = 0;
             for (int f = 0; f < sample.Length; f++)
             {
-                sample[f] = PlayOutcomeRewards.InfieldPotential(director, f);
+                sample[f] = PlayOutcomeRewards.CoverPotential(director, f);
                 FielderController body = director.GetFielder(f);
-                bool infielder = PlayOutcomeRewards.TryGetCoverBase(body.Role, out BaseId own);
-                bool exempt = director.BallHolder == f || (director.BallHolder < 0 && director.LastThrower == f);
-                if (!infielder || exempt)
-                {
-                    Require(sample[f] == 0f, $"{body.name} has no infield potential as an outfielder, holder or thrower (got {sample[f]:F5})");
-                    continue;
-                }
-                float expected = -PlayOutcomeRewards.InfieldCoverPerMeter * Flat(body.Position - director.FieldLayout.GetBasePosition(own)).magnitude;
-                if (Mathf.Abs(sample[f] - expected) < 1e-5f) continue;
-                Require(sample[f] == 0f && !director.BattedBallFielded && ++chasers == 1,
-                    $"{body.name} infield potential is -weight x distance to its base or 0 as the one chaser (got {sample[f]:F5}, expected {expected:F5})");
+                float expected = ExpectedDuty(director, f, out Vector3 anchor, out _, out bool coversBase) && coversBase
+                    ? -PlayOutcomeRewards.CoverPerMeter * Flat(body.Position - anchor).magnitude : 0f;
+                Require(Mathf.Abs(sample[f] - expected) < 1e-5f,
+                    $"{body.name} cover potential follows the role table (got {sample[f]:F5}, expected {expected:F5})");
             }
             return sample;
         }
 
-        /// <summary>내야수 개인 보조 보상 합도 수비수마다 −Φ_i(0) + (γ − 1)ΣΦ_i(k≥1)와 같아야 한다. 외야수는 0이다.</summary>
-        private static void RequireInfieldShaping(TrainingEnvController controller, List<float[]> infield)
+        /// <summary>베이스 커버 개인 보조 보상 합도 수비수마다 −Φ_i(0) + (γ − 1)ΣΦ_i(k≥1)와 같아야 한다.</summary>
+        private static void RequireCoverShaping(TrainingEnvController controller, List<float[]> cover)
         {
-            Require(infield.Count > 0, "infield potentials sampled");
+            Require(cover.Count > 0, "cover potentials sampled");
             for (int j = 0; j < controller.Fielders.Length; j++)
             {
-                List<float> column = Column(infield, controller.Fielders[j].FielderIndex);
+                List<float> column = Column(cover, controller.Fielders[j].FielderIndex);
                 float expected = -column[0];
                 for (int k = 1; k < column.Count; k++) expected += (PlayOutcomeRewards.DefenseShapingGamma - 1f) * column[k];
-                float got = controller.GetLastInfieldShapingReward(j);
+                float got = controller.GetLastCoverShapingReward(j);
                 Require(Mathf.Abs(got - expected) < 1e-4f,
-                    $"{controller.Fielders[j].name} infield shaping sum = -Φ0 + (γ-1)ΣΦ (got {got:F5}, expected {expected:F5})");
+                    $"{controller.Fielders[j].name} cover shaping sum = -Φ0 + (γ-1)ΣΦ (got {got:F5}, expected {expected:F5})");
             }
+        }
+
+        private static float[] SamplePositionRewards(PlayDirector director)
+        {
+            var result = new float[director.FielderCount];
+            for (int f = 0; f < result.Length; f++)
+            {
+                FielderController body = director.GetFielder(f);
+                float expected = ExpectedDuty(director, f, out Vector3 anchor, out float radius, out _)
+                    ? -Mathf.Min(0.1f, 0.005f * Mathf.Max(0f, Flat(body.Position - anchor).magnitude - radius)) * Time.fixedDeltaTime : 0f;
+                result[f] = PlayOutcomeRewards.PositionReward(director, f, Time.fixedDeltaTime);
+                Require(Mathf.Abs(result[f] - expected) < 1e-6f && result[f] <= 0f,
+                    $"{body.name} time-scaled position reward follows the role table (got {result[f]:F6}, expected {expected:F6})");
+            }
+            return result;
+        }
+
+        private static void RequirePositionRewards(TrainingEnvController controller, float[] expected)
+        {
+            float total = 0f;
+            for (int j = 0; j < controller.Fielders.Length; j++)
+            {
+                float value = expected[controller.Fielders[j].FielderIndex];
+                Require(Mathf.Abs(controller.GetLastPositionReward(j) - value) < 1e-5f,
+                    $"{controller.Fielders[j].name} position sum survives terminal settlement without cancellation");
+                total += value;
+            }
+            Require(Mathf.Abs(controller.LastPositionReward - total) < 1e-5f, "position total matches individual sums");
+            RequireStat(controller, "Defense Reward/Position", total);
+        }
+
+        /// <summary>개인 포구 보상은 타구에 처음 닿은 수비수 한 명만, 플레이당 한 번 받는다. 끝에서 회수하지 않는다.</summary>
+        private static void RequireFieldingRewards(TrainingEnvController controller, float[] expected)
+        {
+            float total = 0f;
+            for (int j = 0; j < controller.Fielders.Length; j++)
+            {
+                float value = expected[controller.Fielders[j].FielderIndex];
+                Require(Mathf.Abs(controller.GetLastFieldingReward(j) - value) < 1e-6f,
+                    $"{controller.Fielders[j].name} fielding reward goes only to the first fielder");
+                total += value;
+            }
+            Require(Mathf.Abs(controller.LastFieldingReward - total) < 1e-6f &&
+                (total == 0f || Mathf.Abs(total - PlayOutcomeRewards.FieldingReward) < 1e-6f), "at most one fielding reward per play");
+            // 플레이가 끝나면 Director가 초기화되므로, 종료 시점에 기록한 포구 지표와 비교한다.
+            RequireStat(controller, "Defense/Fielded", total > 0f ? 1f : 0f);
+            RequireStat(controller, "Defense Reward/Fielding", total);
+        }
+
+        /// <summary>
+        /// 역할 임무와 자리 이탈 감점을 정지 상태에서 확인한다. 쫓는 수비수를 고정하려고 보조 수비수(중견수, 중견수 검사 때는 좌익수)를
+        /// 예상 지점 위에 둔다. 3루 쪽(분사각 0)과 1루 쪽(분사각 > 0) 타구에서 각각 확인하고, 2루 커버 역할 교대와
+        /// 1루수가 공을 쫓을 때 투수의 1루 커버도 본다.
+        /// </summary>
+        private static void VerifyPositionDuties(TrainingEnvController controller)
+        {
+            PlayDirector director = controller.Director;
+            int center = FielderIndexOf(director, FielderRole.CenterField), left = FielderIndexOf(director, FielderRole.LeftField);
+            int firstBase = FielderIndexOf(director, FielderRole.FirstBase), pitcherIndex = FielderIndexOf(director, FielderRole.Pitcher);
+            int second = FielderIndexOf(director, FielderRole.SecondBase), shortstop = FielderIndexOf(director, FielderRole.Shortstop);
+            foreach (bool rightSide in new[] { false, true })
+            {
+                SetSituation(controller, new Situation(false, false, false, 0));
+                director.RequestScriptedBattedBall(new Vector3(rightSide ? 1f : 0f, 0f, 3f));
+                BatterAgentVerification.Advance(director);
+                Require(director.State == PlayState.BattedBallInFlight, "position duty test starts a live ball");
+                var positions = new Vector3[director.FielderCount];
+                for (int f = 0; f < positions.Length; f++) positions[f] = director.GetFielder(f).Position;
+                Vector3 chasePoint = ExpectedChasePoint(director);
+                Vector3 onChase = new Vector3(chasePoint.x, 0f, chasePoint.z);
+                Vector3 far = onChase + Vector3.forward * 150f;
+                void Restore()
+                {
+                    for (int k = 0; k < positions.Length; k++) director.GetFielder(k).transform.position = positions[k];
+                }
+                try
+                {
+                    for (int f = 0; f < positions.Length; f++)
+                    {
+                        int helper = f == center ? left : center;
+                        Restore();
+                        director.GetFielder(helper).transform.position = onChase;
+                        FielderController body = director.GetFielder(f);
+                        bool expectedDuty = ExpectedDuty(director, f, out Vector3 anchor, out float radius, out bool coversBase);
+                        bool hasDuty = PlayOutcomeRewards.TryGetPositionDuty(director, f, out PositionDuty duty);
+                        Require(expectedDuty && hasDuty, $"{body.name} has a duty while another fielder chases");
+                        Require(Flat(duty.Anchor - anchor).magnitude < 1e-4f && Mathf.Approximately(duty.Radius, radius) && duty.CoversBase == coversBase,
+                            $"{body.name} duty matches the role table (got {duty.Anchor} r{duty.Radius}, expected {anchor} r{radius})");
+                        foreach (float extra in new[] { -radius, -0.1f, 0f, 0.1f, 1f, 100f })
+                        {
+                            float distance = radius + extra;
+                            body.transform.position = anchor + Vector3.right * distance;
+                            Require(PlayOutcomeRewards.DefenseChaser(director) == helper, "position distance test keeps the helper as the chaser");
+                            float expected = -Mathf.Min(0.1f, 0.005f * Mathf.Max(0f, distance - radius));
+                            float got = PlayOutcomeRewards.PositionReward(director, f, 1f);
+                            Require(Mathf.Abs(got - expected) < 1e-6f, $"{body.name} position radius and cap at {distance:F1} m (got {got:F5}, expected {expected:F5})");
+                            Require(Mathf.Abs(PlayOutcomeRewards.PositionReward(director, f, 0.5f) - 0.5f * got) < 1e-6f, "position time scaling");
+                            float cover = coversBase ? -PlayOutcomeRewards.CoverPerMeter * distance : 0f;
+                            Require(Mathf.Abs(PlayOutcomeRewards.CoverPotential(director, f) - cover) < 1e-5f, $"{body.name} cover potential only for base duties");
+                        }
+                        Require(PlayOutcomeRewards.PositionReward(director, f, float.NaN) == 0f &&
+                            PlayOutcomeRewards.PositionReward(director, f, float.PositiveInfinity) == 0f &&
+                            PlayOutcomeRewards.PositionReward(director, f, -1f) == 0f, "invalid elapsed time is ignored");
+                        director.GetFielder(helper).transform.position = far;
+                        body.transform.position = onChase;
+                        Require(PlayOutcomeRewards.DefenseChaser(director) == f && !PlayOutcomeRewards.TryGetPositionDuty(director, f, out _) &&
+                            PlayOutcomeRewards.PositionReward(director, f, 1f) == 0f && PlayOutcomeRewards.CoverPotential(director, f) == 0f,
+                            $"{body.name} is exempt from its duty while chasing");
+                    }
+                    // 1루수가 공을 쫓으면 투수가 1루를 맡는다.
+                    Restore();
+                    director.GetFielder(firstBase).transform.position = onChase;
+                    Require(PlayOutcomeRewards.DefenseChaser(director) == firstBase &&
+                        PlayOutcomeRewards.TryGetPositionDuty(director, pitcherIndex, out PositionDuty pitcherDuty) &&
+                        pitcherDuty.CoversBase && pitcherDuty.Base == BaseId.First, "pitcher covers first while the first baseman chases");
+                    // 2루 커버: 3루 쪽 타구는 2루수, 1루 쪽은 유격수가 먼저다. 그 수비수가 쫓으면 다른 쪽이 맡는다.
+                    int coverer = rightSide ? shortstop : second, backup = rightSide ? second : shortstop;
+                    Restore();
+                    director.GetFielder(center).transform.position = onChase;
+                    Require(PlayOutcomeRewards.TryGetPositionDuty(director, coverer, out PositionDuty first) && first.CoversBase && first.Base == BaseId.Second &&
+                        PlayOutcomeRewards.TryGetPositionDuty(director, backup, out PositionDuty idle) && !idle.CoversBase,
+                        $"{director.GetFielder(coverer).name} covers second on a {(rightSide ? "first" : "third")}-base-side ball");
+                    director.GetFielder(center).transform.position = far;
+                    director.GetFielder(coverer).transform.position = onChase;
+                    Require(PlayOutcomeRewards.DefenseChaser(director) == coverer &&
+                        PlayOutcomeRewards.TryGetPositionDuty(director, backup, out PositionDuty swap) && swap.CoversBase && swap.Base == BaseId.Second,
+                        $"{director.GetFielder(backup).name} covers second while {director.GetFielder(coverer).name} chases");
+                }
+                finally
+                {
+                    Restore();
+                    director.RequestResetPlay();
+                    BatterAgentVerification.Advance(director);
+                }
+                for (int f = 0; f < positions.Length; f++)
+                    Require(PlayOutcomeRewards.PositionReward(director, f, 1f) == 0f, "inactive play has no position penalty");
+            }
+        }
+
+        /// <summary>쫓을 지점을 독립 계산한다. 떠 있는 공은 지금 속도·중력의 진공 낙하 지점, 굴러가는 공은 지금 위치다.</summary>
+        private static Vector3 ExpectedChasePoint(PlayDirector director)
+        {
+            PitchSnapshot ball = director.GetSnapshot();
+            Vector3 point = ball.BallPosition;
+            float g = -Physics.gravity.y;
+            float height = point.y - director.FieldLayout.HomePosition.y - director.EnvironmentConfig.BallRadius;
+            if (height > 0f && g > 0f)
+            {
+                float vy = ball.BallVelocity.y;
+                float time = (vy + Mathf.Sqrt(vy * vy + 2f * g * height)) / g;
+                point += new Vector3(ball.BallVelocity.x, 0f, ball.BallVelocity.z) * time;
+            }
+            return point;
+        }
+
+        private static int NearestFielder(PlayDirector director, Vector3 point, out float distance)
+        {
+            int nearest = -1;
+            distance = float.PositiveInfinity;
+            for (int f = 0; f < director.FielderCount; f++)
+            {
+                float d = Flat(director.GetFielder(f).Position - point).magnitude;
+                if (d >= distance) continue;
+                nearest = f;
+                distance = d;
+            }
+            return nearest;
+        }
+
+        /// <summary>쫓기 포텐셜을 독립 계산한다. 첫 포구 전 한 명만 거리 계수, 포구 뒤에는 전원 0이다.</summary>
+        private static float[] SampleChasePotentials(PlayDirector director)
+        {
+            int nearest = NearestFielder(director, ExpectedChasePoint(director), out float distance);
+            var sample = new float[director.FielderCount];
+            for (int f = 0; f < sample.Length; f++)
+            {
+                sample[f] = PlayOutcomeRewards.ChasePotential(director, f);
+                float expected = !director.BattedBallFielded && f == nearest ? -PlayOutcomeRewards.DefenseChasePerMeter * distance : 0f;
+                Require(Mathf.Abs(sample[f] - expected) < 1e-5f, $"chase potential belongs only to the nearest fielder ({f})");
+            }
+            Require(PlayOutcomeRewards.DefenseChaser(director) == (director.BattedBallFielded ? -1 : nearest),
+                "chase reward and duty exemption use the same chaser");
+            return sample;
+        }
+
+        /// <summary>그룹 포텐셜에 쫓기 성분이 중복되지 않는지 독립 계산으로 확인한다.</summary>
+        private static float SampleGroupPotential(PlayDirector director)
+        {
+            float expected = director.BattedBallFielded ? PlayOutcomeRewards.DefenseFieldedValue : 0f;
+            for (int slot = 0; slot < director.RunnerSlotCount; slot++)
+            {
+                RunnerSnapshot runner = director.GetRunnerSnapshot(slot);
+                if (!runner.IsLive || !director.IsRunnerForced(slot)) continue;
+                BaseId forced = (BaseId)(((int)runner.StartBase + 1) % 4);
+                Vector3 point = director.FieldLayout.GetBasePosition(forced);
+                float nearest = float.PositiveInfinity;
+                for (int f = 0; f < director.FielderCount; f++)
+                    nearest = Mathf.Min(nearest, Flat(director.GetFielder(f).Position - point).magnitude);
+                expected -= PlayOutcomeRewards.DefenseCoverPerMeter * nearest;
+            }
+            float got = PlayOutcomeRewards.DefensePotential(director);
+            Require(Mathf.Abs(got - expected) < 1e-5f, "group potential contains fielding and force cover only");
+            return got;
+        }
+
+        private static void RequireChaseShaping(TrainingEnvController controller, List<float[]> chase)
+        {
+            Require(chase.Count > 0, "chase potentials sampled");
+            float total = 0f;
+            for (int j = 0; j < controller.Fielders.Length; j++)
+            {
+                List<float> column = Column(chase, controller.Fielders[j].FielderIndex);
+                float expected = -column[0];
+                for (int k = 1; k < column.Count; k++) expected += (PlayOutcomeRewards.DefenseShapingGamma - 1f) * column[k];
+                float got = controller.GetLastChaseShapingReward(j);
+                Require(Mathf.Abs(got - expected) < 1e-4f,
+                    $"{controller.Fielders[j].name} chase shaping sum = -Φ0 + (γ-1)ΣΦ (got {got:F5}, expected {expected:F5})");
+                total += got;
+            }
+            Require(Mathf.Abs(controller.LastChaseShapingReward - total) < 1e-4f, "chase shaping total matches individual rewards");
+            RequireStat(controller, "Defense Reward/Chase Shaping", total);
+        }
+
+        private static List<float> SumSamples(List<float[]> samples)
+        {
+            var sums = new List<float>(samples.Count);
+            foreach (float[] sample in samples)
+            {
+                float sum = 0f;
+                foreach (float value in sample) sum += value;
+                sums.Add(sum);
+            }
+            return sums;
+        }
+
+        private static void VerifyFielderMovement(TrainingEnvController controller)
+        {
+            PlayDirector director = controller.Director;
+            BatterAgentVerification.FinishCurrentPlateAppearance(controller);
+            Vector2[] inputs = { new Vector2(4f, 2f), new Vector2(-2f, 4f), new Vector2(-4f, -2f),
+                new Vector2(2f, -4f), new Vector2(0.3f, 0.4f), new Vector2(0.06f, 0.08f), Vector2.zero,
+                new Vector2(float.NaN, 1f), new Vector2(1f, float.PositiveInfinity) };
+            foreach (Vector2 input in inputs)
+            {
+                foreach (FielderAgent agent in controller.Fielders)
+                {
+                    director.GetFielder(agent.FielderIndex).ResetState(director.FieldLayout.HomePosition);
+                    agent.OnActionReceived(new ActionBuffers(new[] { input.x, input.y }, new[] { 0 }));
+                }
+                // Ready의 명령 적용만 진행하고 각 몸을 직접 적분해 Academy 중립 행동에 덮이지 않게 한다.
+                BatterAgentVerification.Advance(director);
+                // 정책 출력에 MoveActionGain(3)을 곱한 뒤 크기 1로 제한한다. (0.3, 0.4)는 최고 속력, (0.06, 0.08)은 0.3배 속력이다.
+                Vector2 expected = BaseballEnvironmentConfig.IsFinite(input.x) && BaseballEnvironmentConfig.IsFinite(input.y)
+                    ? Vector2.ClampMagnitude(input * FielderAgent.MoveActionGain, 1f) : Vector2.zero;
+                foreach (FielderAgent agent in controller.Fielders)
+                {
+                    FielderController body = director.GetFielder(agent.FielderIndex);
+                    for (int step = 0; step < 25; step++) body.Tick(Time.fixedDeltaTime, director.EnvironmentConfig, director.FieldLayout.HomePosition);
+                    Vector3 velocity = new Vector3(expected.x, 0f, expected.y) * director.EnvironmentConfig.FielderSpeed;
+                    Require(Vector3.Distance(body.Velocity, velocity) < 1e-4f, $"{agent.name} preserves input direction, applies the move gain and caps speed for {input}");
+                    body.ResetState(director.FieldLayout.HomePosition);
+                    Require(body.Position == body.HomeSpot && body.Velocity == Vector3.zero, "fielder reset clears position and velocity");
+                    director.RequestFielderMove(agent.FielderIndex, Vector2.zero);
+                }
+            }
+            BatterAgentVerification.Advance(director);
         }
 
         private static List<float> Column(List<float[]> samples, int index)
@@ -914,23 +1315,31 @@ namespace BaseballSimulation.Editor
             throw new Exception("Training stage verification failed: no fielder with role " + role);
         }
 
-        private static string DescribeInfieldSums(TrainingEnvController controller)
+        private static readonly FielderRole[] CoverRoles =
+            { FielderRole.Catcher, FielderRole.FirstBase, FielderRole.SecondBase, FielderRole.ThirdBase, FielderRole.Shortstop, FielderRole.Pitcher };
+
+        private static string DescribeCoverSums(TrainingEnvController controller)
         {
             var text = new StringBuilder();
-            for (int j = 0; j < controller.Fielders.Length; j++)
+            foreach (FielderRole role in CoverRoles)
             {
-                FielderRole role = controller.Director.GetFielder(controller.Fielders[j].FielderIndex).Role;
-                if (!PlayOutcomeRewards.TryGetCoverBase(role, out _)) continue;
+                int j = Array.FindIndex(controller.Fielders, agent => controller.Director.GetFielder(agent.FielderIndex).Role == role);
                 if (text.Length > 0) text.Append(", ");
-                text.Append($"{role} {controller.GetLastInfieldShapingReward(j):+0.000;-0.000}");
+                text.Append($"{role} {controller.GetLastCoverShapingReward(j):+0.000;-0.000}");
             }
             return text.ToString();
         }
 
-        private static string DescribeInfield(PlayDirector director, float[] sample) =>
-            $"1B {sample[FielderIndexOf(director, FielderRole.FirstBase)]:+0.000;-0.000}, " +
-            $"SS {sample[FielderIndexOf(director, FielderRole.Shortstop)]:+0.000;-0.000}, " +
-            $"3B {sample[FielderIndexOf(director, FielderRole.ThirdBase)]:+0.000;-0.000}";
+        private static string DescribeCover(PlayDirector director, float[] sample)
+        {
+            var text = new StringBuilder();
+            foreach (FielderRole role in CoverRoles)
+            {
+                if (text.Length > 0) text.Append(", ");
+                text.Append($"{role} {sample[FielderIndexOf(director, role)]:+0.000;-0.000}");
+            }
+            return text.ToString();
+        }
 
         /// <summary>처음 <paramref name="transitions"/>개 결정 사이의 보조 보상 합 Σ(γΦ(k+1) − Φ(k)).</summary>
         private static float ShapingSum(List<float> potentials, int transitions)

@@ -181,6 +181,9 @@ namespace BaseballSimulation
         private Vector3 pendingScriptedExitVelocity;
         private bool scriptedBattedBall;
         private const float ThrowerRecatchDelay = 0.3f;
+        /// <summary>포수는 타구 직후 이 시간 동안 첫 포구를 하지 않는다. 뒤로 튄 파울 팁을 뜬공 아웃으로 만들지 않기 위해서다.</summary>
+        public const float CatcherFoulTipSeconds = 0.3f;
+        private float battedBallStartTime;
 
         private bool HasFielders => fielders != null && fielders.Length > 0;
         public int FielderCount => fielders != null ? fielders.Length : 0;
@@ -191,6 +194,8 @@ namespace BaseballSimulation
         public bool BattedBallFielded => battedBallFielded;
         /// <summary>이번 플레이에서 마지막으로 송구한 수비수 인덱스. 송구가 없었으면 -1이다.</summary>
         public int LastThrower => lastThrower;
+        /// <summary>그 수비수가 지금 송구할 수 있는지: 타구가 살아 있고 그 수비수가 공을 쥐었다.</summary>
+        public bool CanThrow(int index) => state == PlayState.BattedBallInFlight && index >= 0 && BallHolder == index;
         /// <summary>수비수가 공을 잡을 때 발생한다. (수비수 인덱스, 타구가 땅·펜스에 닿기 전에 잡았는지)</summary>
         public event System.Action<int, bool> BallFielded;
 
@@ -716,6 +721,7 @@ namespace BaseballSimulation
             battedApexHeight = contactPosition.y;
             ball.Launch(exitVelocity, BallController.BackspinVector(exitVelocity, battedBackspinRpm));
             judge.Begin(contactPosition, elapsedSeconds);
+            battedBallStartTime = elapsedSeconds;
             state = PlayState.BattedBallInFlight;
             liveBattedPlay = true;
             if (runner != null)
@@ -863,6 +869,8 @@ namespace BaseballSimulation
             for (int i = 0; i < fielders.Length; i++)
             {
                 if (i == lastThrower && elapsedSeconds - lastThrowTime < ThrowerRecatchDelay) continue;
+                if (!battedBallFielded && fielders[i].Role == FielderRole.Catcher &&
+                    elapsedSeconds - battedBallStartTime < CatcherFoulTipSeconds) continue;
                 Vector3 body = fielders[i].Position;
                 Vector2 c = new Vector2(body.x, body.z);
                 float t = ab.sqrMagnitude > 1e-8f ? Mathf.Clamp01(Vector2.Dot(c - a, ab) / ab.sqrMagnitude) : 0f;

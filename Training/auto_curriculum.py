@@ -190,6 +190,7 @@ def run_stage(stage: int, trainer: Path, torch_device: str | None, initialize_fr
         check_stage_finished(stage - 1)
     if not player(stage).is_file():
         raise FileNotFoundError(f"Missing Unity player: {player(stage)}")
+    # The registered fielder trainer is selected by the Stage 3 YAML.
     command = [str(trainer), str(CONFIGS[stage]), f"--run-id={RUN_IDS[stage]}",
                f"--results-dir={RESULTS}", f"--env={player(stage)}",
                "--no-graphics", "--base-port=5010"]

@@ -1,0 +1,3817 @@
+{
+    "name": "root",
+    "gauges": {
+        "BaseballFielder.BenchmarkBatter.ZoneRate.mean": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 78
+        },
+        "BaseballFielder.BenchmarkBatter.ZoneRate.sum": {
+            "value": 2.0,
+            "min": 0.0,
+            "max": 5.0,
+            "count": 78
+        },
+        "BaseballFielder.BenchmarkBatter.ChaseRate.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 53
+        },
+        "BaseballFielder.BenchmarkBatter.ChaseRate.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 3.0,
+            "count": 53
+        },
+        "BaseballFielder.BenchmarkBatter.ContactRate.mean": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 61
+        },
+        "BaseballFielder.BenchmarkBatter.ContactRate.sum": {
+            "value": 2.0,
+            "min": 0.0,
+            "max": 2.0,
+            "count": 61
+        },
+        "BaseballFielder.Env.AbortedPlay.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.Env.AbortedPlay.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.Policy.Entropy.mean": {
+            "value": 2.2940802574157715,
+            "min": 2.2343156337738037,
+            "max": 2.862342119216919,
+            "count": 132
+        },
+        "BaseballFielder.Policy.Entropy.sum": {
+            "value": 5035.50634765625,
+            "min": 3445.53564453125,
+            "max": 6627.32568359375,
+            "count": 132
+        },
+        "BaseballFielder.BenchmarkBatter.ZoneSwingRate.mean": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 64
+        },
+        "BaseballFielder.BenchmarkBatter.ZoneSwingRate.sum": {
+            "value": 2.0,
+            "min": 0.0,
+            "max": 4.0,
+            "count": 64
+        },
+        "BaseballFielder.BenchmarkBatter.Strikeout.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 53
+        },
+        "BaseballFielder.BenchmarkBatter.Strikeout.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 2.0,
+            "count": 53
+        },
+        "BaseballFielder.BenchmarkBatter.Walk.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 53
+        },
+        "BaseballFielder.BenchmarkBatter.Walk.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 53
+        },
+        "BaseballFielder.BenchmarkBatter.InPlay.mean": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 53
+        },
+        "BaseballFielder.BenchmarkBatter.InPlay.sum": {
+            "value": 2.0,
+            "min": 0.0,
+            "max": 2.0,
+            "count": 53
+        },
+        "BaseballFielder.BenchmarkBatter.BatterOutcome.mean": {
+            "value": 1.0,
+            "min": -1.0,
+            "max": 2.0,
+            "count": 53
+        },
+        "BaseballFielder.BenchmarkBatter.BatterOutcome.sum": {
+            "value": 2.0,
+            "min": -2.0,
+            "max": 3.5,
+            "count": 53
+        },
+        "BaseballFielder.BenchmarkBatter.OnBase.mean": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 53
+        },
+        "BaseballFielder.BenchmarkBatter.OnBase.sum": {
+            "value": 2.0,
+            "min": 0.0,
+            "max": 2.0,
+            "count": 53
+        },
+        "BaseballFielder.PitchCall.Ball.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.1111111111111111,
+            "count": 132
+        },
+        "BaseballFielder.PitchCall.Ball.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 2.0,
+            "count": 132
+        },
+        "BaseballFielder.PitchCall.CalledStrike.mean": {
+            "value": 0.6,
+            "min": 0.23076923076923078,
+            "max": 0.7692307692307693,
+            "count": 132
+        },
+        "BaseballFielder.PitchCall.CalledStrike.sum": {
+            "value": 6.0,
+            "min": 1.0,
+            "max": 15.0,
+            "count": 132
+        },
+        "BaseballFielder.PitchCall.SwingingStrike.mean": {
+            "value": 0.1,
+            "min": 0.0,
+            "max": 0.5,
+            "count": 132
+        },
+        "BaseballFielder.PitchCall.SwingingStrike.sum": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 10.0,
+            "count": 132
+        },
+        "BaseballFielder.PitchCall.Foul.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.07692307692307693,
+            "count": 132
+        },
+        "BaseballFielder.PitchCall.Foul.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 132
+        },
+        "BaseballFielder.PitchCall.InPlay.mean": {
+            "value": 0.3,
+            "min": 0.08695652173913043,
+            "max": 0.75,
+            "count": 132
+        },
+        "BaseballFielder.PitchCall.InPlay.sum": {
+            "value": 3.0,
+            "min": 2.0,
+            "max": 5.0,
+            "count": 132
+        },
+        "BaseballFielder.PlateDiscipline.ZoneRate.mean": {
+            "value": 1.0,
+            "min": 0.8333333333333334,
+            "max": 1.0,
+            "count": 132
+        },
+        "BaseballFielder.PlateDiscipline.ZoneRate.sum": {
+            "value": 10.0,
+            "min": 3.0,
+            "max": 25.0,
+            "count": 132
+        },
+        "BaseballFielder.PlateDiscipline.SwingRate.mean": {
+            "value": 0.4,
+            "min": 0.23076923076923078,
+            "max": 0.7692307692307693,
+            "count": 132
+        },
+        "BaseballFielder.PlateDiscipline.SwingRate.sum": {
+            "value": 4.0,
+            "min": 2.0,
+            "max": 13.0,
+            "count": 132
+        },
+        "BaseballFielder.PlateDiscipline.ZoneSwingRate.mean": {
+            "value": 0.4,
+            "min": 0.16666666666666666,
+            "max": 0.7692307692307693,
+            "count": 132
+        },
+        "BaseballFielder.PlateDiscipline.ZoneSwingRate.sum": {
+            "value": 4.0,
+            "min": 2.0,
+            "max": 11.0,
+            "count": 132
+        },
+        "BaseballFielder.Pitch.Speed(km.h).mean": {
+            "value": 128.4860710144043,
+            "min": 121.60895156860352,
+            "max": 143.0687141418457,
+            "count": 132
+        },
+        "BaseballFielder.Pitch.Speed(km.h).sum": {
+            "value": 1284.860710144043,
+            "min": 399.9261932373047,
+            "max": 3559.472686767578,
+            "count": 132
+        },
+        "BaseballFielder.PitchType.FourSeam.mean": {
+            "value": 0.2,
+            "min": 0.0,
+            "max": 0.6666666666666666,
+            "count": 132
+        },
+        "BaseballFielder.PitchType.FourSeam.sum": {
+            "value": 2.0,
+            "min": 0.0,
+            "max": 8.0,
+            "count": 132
+        },
+        "BaseballFielder.PitchType.TwoSeam.mean": {
+            "value": 0.2,
+            "min": 0.0,
+            "max": 0.75,
+            "count": 132
+        },
+        "BaseballFielder.PitchType.TwoSeam.sum": {
+            "value": 2.0,
+            "min": 0.0,
+            "max": 8.0,
+            "count": 132
+        },
+        "BaseballFielder.PitchType.Curve.mean": {
+            "value": 0.3,
+            "min": 0.0,
+            "max": 0.5,
+            "count": 132
+        },
+        "BaseballFielder.PitchType.Curve.sum": {
+            "value": 3.0,
+            "min": 0.0,
+            "max": 5.0,
+            "count": 132
+        },
+        "BaseballFielder.PitchType.Slider.mean": {
+            "value": 0.2,
+            "min": 0.0,
+            "max": 0.6,
+            "count": 132
+        },
+        "BaseballFielder.PitchType.Slider.sum": {
+            "value": 2.0,
+            "min": 0.0,
+            "max": 5.0,
+            "count": 132
+        },
+        "BaseballFielder.PitchType.Changeup.mean": {
+            "value": 0.1,
+            "min": 0.0,
+            "max": 0.6666666666666666,
+            "count": 132
+        },
+        "BaseballFielder.PitchType.Changeup.sum": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 9.0,
+            "count": 132
+        },
+        "BaseballFielder.BatterReward.Contact.mean": {
+            "value": 0.15,
+            "min": 0.043478260869565216,
+            "max": 0.375,
+            "count": 132
+        },
+        "BaseballFielder.BatterReward.Contact.sum": {
+            "value": 1.5,
+            "min": 1.0,
+            "max": 2.5,
+            "count": 132
+        },
+        "BaseballFielder.BatterReward.Miss.mean": {
+            "value": -0.7,
+            "min": -0.9130434782608695,
+            "max": -0.25,
+            "count": 132
+        },
+        "BaseballFielder.BatterReward.Miss.sum": {
+            "value": -7.0,
+            "min": -24.0,
+            "max": -1.0,
+            "count": 132
+        },
+        "BaseballFielder.BatterReward.ExitSpeed.mean": {
+            "value": 0.08362777531147003,
+            "min": 0.0,
+            "max": 0.3177763670682907,
+            "count": 132
+        },
+        "BaseballFielder.BatterReward.ExitSpeed.sum": {
+            "value": 0.8362777531147003,
+            "min": 0.0,
+            "max": 2.50992888212204,
+            "count": 132
+        },
+        "BaseballFielder.BatterReward.PopFly.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.BatterReward.PopFly.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.BatterReward.Foul.mean": {
+            "value": 0.0,
+            "min": -0.11538461538461539,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.BatterReward.Foul.sum": {
+            "value": 0.0,
+            "min": -1.5,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.BatterReward.HomeRun.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.BatterReward.HomeRun.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.BatterReward.PitchTotal.mean": {
+            "value": -0.4663722276687622,
+            "min": -0.8235294117647058,
+            "max": 0.4427763521671295,
+            "count": 132
+        },
+        "BaseballFielder.BatterReward.PitchTotal.sum": {
+            "value": -4.663722276687622,
+            "min": -21.584591507911682,
+            "max": 1.771105408668518,
+            "count": 132
+        },
+        "BaseballFielder.Step.mean": {
+            "value": 671960.0,
+            "min": 409992.0,
+            "max": 671960.0,
+            "count": 132
+        },
+        "BaseballFielder.Step.sum": {
+            "value": 671960.0,
+            "min": 409992.0,
+            "max": 671960.0,
+            "count": 132
+        },
+        "BaseballFielder.Policy.ExtrinsicBaselineEstimate.mean": {
+            "value": -0.2248423844575882,
+            "min": -0.5038754940032959,
+            "max": 0.3670753538608551,
+            "count": 132
+        },
+        "BaseballFielder.Policy.ExtrinsicBaselineEstimate.sum": {
+            "value": -7.644640922546387,
+            "min": -17.13176727294922,
+            "max": 12.847637176513672,
+            "count": 132
+        },
+        "BaseballFielder.Policy.ExtrinsicValueEstimate.mean": {
+            "value": -0.15817083418369293,
+            "min": -0.5897079706192017,
+            "max": 0.4059445261955261,
+            "count": 132
+        },
+        "BaseballFielder.Policy.ExtrinsicValueEstimate.sum": {
+            "value": -5.377808570861816,
+            "min": -20.050071716308594,
+            "max": 14.20805835723877,
+            "count": 132
+        },
+        "BaseballFielder.Environment.EpisodeLength.mean": {
+            "value": 113.66666666666667,
+            "min": 87.75,
+            "max": 115.0,
+            "count": 132
+        },
+        "BaseballFielder.Environment.EpisodeLength.sum": {
+            "value": 1705.0,
+            "min": 1140.0,
+            "max": 2865.0,
+            "count": 132
+        },
+        "BaseballFielder.PlateDiscipline.ContactRate.mean": {
+            "value": 0.75,
+            "min": 0.18181818181818182,
+            "max": 1.0,
+            "count": 132
+        },
+        "BaseballFielder.PlateDiscipline.ContactRate.sum": {
+            "value": 3.0,
+            "min": 2.0,
+            "max": 5.0,
+            "count": 132
+        },
+        "BaseballFielder.BattedBall.ExitSpeed(km.h).mean": {
+            "value": 115.0883280436198,
+            "min": 67.24217796325684,
+            "max": 170.07699584960938,
+            "count": 132
+        },
+        "BaseballFielder.BattedBall.ExitSpeed(km.h).sum": {
+            "value": 345.2649841308594,
+            "min": 134.48435592651367,
+            "max": 633.1931533813477,
+            "count": 132
+        },
+        "BaseballFielder.BattedBall.LaunchAngle(deg).mean": {
+            "value": -19.441343307495117,
+            "min": -28.056400299072266,
+            "max": -2.9163438777128854,
+            "count": 132
+        },
+        "BaseballFielder.BattedBall.LaunchAngle(deg).sum": {
+            "value": -58.32402992248535,
+            "min": -102.52825736999512,
+            "max": -8.749031633138657,
+            "count": 132
+        },
+        "BaseballFielder.BattedBall.SprayAngle(deg).mean": {
+            "value": 10.823839664459229,
+            "min": -6.096711158752441,
+            "max": 29.82589054107666,
+            "count": 132
+        },
+        "BaseballFielder.BattedBall.SprayAngle(deg).sum": {
+            "value": 32.471518993377686,
+            "min": -14.586359143257141,
+            "max": 92.05788064002991,
+            "count": 132
+        },
+        "BaseballFielder.BattedBall.Fair.mean": {
+            "value": 1.0,
+            "min": 0.75,
+            "max": 1.0,
+            "count": 132
+        },
+        "BaseballFielder.BattedBall.Fair.sum": {
+            "value": 3.0,
+            "min": 2.0,
+            "max": 5.0,
+            "count": 132
+        },
+        "BaseballFielder.BattedBall.HomeRun.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.BattedBall.HomeRun.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.BattedBall.Distance(m).mean": {
+            "value": 2.825183550516764,
+            "min": 1.891272783279419,
+            "max": 16.442878365516663,
+            "count": 132
+        },
+        "BaseballFielder.BattedBall.Distance(m).sum": {
+            "value": 8.475550651550293,
+            "min": 3.782545566558838,
+            "max": 49.13380813598633,
+            "count": 132
+        },
+        "BaseballFielder.Swing.TimingError(ms).mean": {
+            "value": 11.452585458755493,
+            "min": -41.604624080657956,
+            "max": 55.21764039993286,
+            "count": 132
+        },
+        "BaseballFielder.Swing.TimingError(ms).sum": {
+            "value": 45.81034183502197,
+            "min": -300.34851264953613,
+            "max": 249.5163083076477,
+            "count": 132
+        },
+        "BaseballFielder.Swing.Bat-BallDistance(cm).mean": {
+            "value": 10.08799958229065,
+            "min": 7.351118326187134,
+            "max": 159.05717639923097,
+            "count": 132
+        },
+        "BaseballFielder.Swing.Bat-BallDistance(cm).sum": {
+            "value": 40.3519983291626,
+            "min": 14.702236652374268,
+            "max": 1590.5717639923096,
+            "count": 132
+        },
+        "BaseballFielder.Defense.Fielded.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.6666666666666666,
+            "count": 132
+        },
+        "BaseballFielder.Defense.Fielded.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 2.0,
+            "count": 132
+        },
+        "BaseballFielder.DefenseReward.Outcome.mean": {
+            "value": -2.0,
+            "min": -3.0,
+            "max": -0.5,
+            "count": 132
+        },
+        "BaseballFielder.DefenseReward.Outcome.sum": {
+            "value": -6.0,
+            "min": -11.0,
+            "max": -1.5,
+            "count": 132
+        },
+        "BaseballFielder.DefenseReward.Shaping.mean": {
+            "value": 0.13922820488611856,
+            "min": -0.05058304965496063,
+            "max": 0.5840709706147512,
+            "count": 132
+        },
+        "BaseballFielder.DefenseReward.Shaping.sum": {
+            "value": 0.4176846146583557,
+            "min": -0.1517491489648819,
+            "max": 1.7522129118442535,
+            "count": 132
+        },
+        "BaseballFielder.DefenseReward.ChaseShaping.mean": {
+            "value": 2.1678587595621743,
+            "min": 1.6238961219787598,
+            "max": 3.1917670369148254,
+            "count": 132
+        },
+        "BaseballFielder.DefenseReward.ChaseShaping.sum": {
+            "value": 6.503576278686523,
+            "min": 3.786711812019348,
+            "max": 12.767068147659302,
+            "count": 132
+        },
+        "BaseballFielder.DefenseReward.InfieldPosition.mean": {
+            "value": -0.20780178407828012,
+            "min": -0.5056414405504862,
+            "max": -0.11149889137595892,
+            "count": 132
+        },
+        "BaseballFielder.DefenseReward.InfieldPosition.sum": {
+            "value": -0.6234053522348404,
+            "min": -1.8264284133911133,
+            "max": -0.39143645763397217,
+            "count": 132
+        },
+        "BaseballFielder.Defense.Cover1B.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 132
+        },
+        "BaseballFielder.Defense.Cover1B.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 3.0,
+            "count": 132
+        },
+        "BaseballFielder.Defense.Cover2B(SS).mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.5,
+            "count": 132
+        },
+        "BaseballFielder.Defense.Cover2B(SS).sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 2.0,
+            "count": 132
+        },
+        "BaseballFielder.Defense.Cover3B.mean": {
+            "value": 0.6666666666666666,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 132
+        },
+        "BaseballFielder.Defense.Cover3B.sum": {
+            "value": 2.0,
+            "min": 0.0,
+            "max": 3.0,
+            "count": 132
+        },
+        "BaseballFielder.PlateAppearance.Strikeout.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.7142857142857143,
+            "count": 132
+        },
+        "BaseballFielder.PlateAppearance.Strikeout.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 6.0,
+            "count": 132
+        },
+        "BaseballFielder.PlateAppearance.Walk.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.PlateAppearance.Walk.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.PlateAppearance.InPlay.mean": {
+            "value": 1.0,
+            "min": 0.2857142857142857,
+            "max": 1.0,
+            "count": 132
+        },
+        "BaseballFielder.PlateAppearance.InPlay.sum": {
+            "value": 3.0,
+            "min": 2.0,
+            "max": 5.0,
+            "count": 132
+        },
+        "BaseballFielder.PlateAppearance.Pitches.mean": {
+            "value": 3.0,
+            "min": 2.0,
+            "max": 3.3333333333333335,
+            "count": 132
+        },
+        "BaseballFielder.PlateAppearance.Pitches.sum": {
+            "value": 9.0,
+            "min": 4.0,
+            "max": 26.0,
+            "count": 132
+        },
+        "BaseballFielder.BatterReward.Outcome.mean": {
+            "value": 1.5,
+            "min": -0.3333333333333333,
+            "max": 1.8333333333333333,
+            "count": 132
+        },
+        "BaseballFielder.BatterReward.Outcome.sum": {
+            "value": 4.5,
+            "min": -2.0,
+            "max": 7.0,
+            "count": 132
+        },
+        "BaseballFielder.PlateAppearance.OnBase.mean": {
+            "value": 1.0,
+            "min": 0.2857142857142857,
+            "max": 1.0,
+            "count": 132
+        },
+        "BaseballFielder.PlateAppearance.OnBase.sum": {
+            "value": 3.0,
+            "min": 2.0,
+            "max": 5.0,
+            "count": 132
+        },
+        "BaseballFielder.Play.Outs.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.25,
+            "count": 132
+        },
+        "BaseballFielder.Play.Outs.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 132
+        },
+        "BaseballFielder.Play.Runs.mean": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 1.6666666666666667,
+            "count": 132
+        },
+        "BaseballFielder.Play.Runs.sum": {
+            "value": 3.0,
+            "min": 0.0,
+            "max": 6.0,
+            "count": 132
+        },
+        "BaseballFielder.Play.BatterBases.mean": {
+            "value": 2.0,
+            "min": 1.5,
+            "max": 2.0,
+            "count": 132
+        },
+        "BaseballFielder.Play.BatterBases.sum": {
+            "value": 6.0,
+            "min": 4.0,
+            "max": 10.0,
+            "count": 132
+        },
+        "BaseballFielder.Play.RunnerOuts.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.25,
+            "count": 132
+        },
+        "BaseballFielder.Play.RunnerOuts.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 132
+        },
+        "BaseballFielder.Play.BasesAdvanced.mean": {
+            "value": 4.0,
+            "min": 2.0,
+            "max": 5.5,
+            "count": 132
+        },
+        "BaseballFielder.Play.BasesAdvanced.sum": {
+            "value": 12.0,
+            "min": 4.0,
+            "max": 20.0,
+            "count": 132
+        },
+        "BaseballFielder.Play.LiveTime(s).mean": {
+            "value": 11.446662267049154,
+            "min": 8.854996472597122,
+            "max": 11.55332883199056,
+            "count": 132
+        },
+        "BaseballFielder.Play.LiveTime(s).sum": {
+            "value": 34.33998680114746,
+            "min": 22.899991035461426,
+            "max": 57.47997760772705,
+            "count": 132
+        },
+        "BaseballFielder.PlayEnd.FlyOut.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.PlayEnd.FlyOut.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.PlayEnd.ForceOut.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.25,
+            "count": 132
+        },
+        "BaseballFielder.PlayEnd.ForceOut.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 132
+        },
+        "BaseballFielder.PlayEnd.TagOut.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.25,
+            "count": 132
+        },
+        "BaseballFielder.PlayEnd.TagOut.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 132
+        },
+        "BaseballFielder.PlayEnd.RunnerSafe.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.PlayEnd.RunnerSafe.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.PlayEnd.RunScored.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.PlayEnd.RunScored.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.PlayEnd.HomeRun.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.PlayEnd.HomeRun.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.PlayEnd.GroundRuleDouble.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.PlayEnd.GroundRuleDouble.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.PlayEnd.Timeout.mean": {
+            "value": 1.0,
+            "min": 0.75,
+            "max": 1.0,
+            "count": 132
+        },
+        "BaseballFielder.PlayEnd.Timeout.sum": {
+            "value": 3.0,
+            "min": 2.0,
+            "max": 5.0,
+            "count": 132
+        },
+        "BaseballFielder.Matchup.BatterWin.mean": {
+            "value": 1.0,
+            "min": 0.2857142857142857,
+            "max": 1.0,
+            "count": 132
+        },
+        "BaseballFielder.Matchup.BatterWin.sum": {
+            "value": 3.0,
+            "min": 2.0,
+            "max": 5.0,
+            "count": 132
+        },
+        "BaseballFielder.Matchup.PitcherWin.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.7142857142857143,
+            "count": 132
+        },
+        "BaseballFielder.Matchup.PitcherWin.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 6.0,
+            "count": 132
+        },
+        "BaseballFielder.Matchup.Draw.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.Matchup.Draw.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 132
+        },
+        "BaseballFielder.Environment.CumulativeReward.mean": {
+            "value": 0.4337432830195342,
+            "min": 0.4030774618898119,
+            "max": 0.6795512552965771,
+            "count": 132
+        },
+        "BaseballFielder.Environment.CumulativeReward.sum": {
+            "value": 6.0724059622734785,
+            "min": 5.643084466457367,
+            "max": 14.950127616524696,
+            "count": 132
+        },
+        "BaseballFielder.Policy.ExtrinsicReward.mean": {
+            "value": 0.7464594798428672,
+            "min": -0.7574187874794006,
+            "max": 1.8404573120854117,
+            "count": 132
+        },
+        "BaseballFielder.Policy.ExtrinsicReward.sum": {
+            "value": 10.45043271780014,
+            "min": -15.148375749588013,
+            "max": 40.49006086587906,
+            "count": 132
+        },
+        "BaseballFielder.Environment.GroupCumulativeReward.mean": {
+            "value": -1.7263461093285255,
+            "min": -3.0247423241713216,
+            "max": -0.7366056657499738,
+            "count": 132
+        },
+        "BaseballFielder.Environment.GroupCumulativeReward.sum": {
+            "value": -24.168845530599356,
+            "min": -58.87556651607156,
+            "max": -11.058118119835854,
+            "count": 132
+        },
+        "BaseballFielder.IsTraining.mean": {
+            "value": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "count": 132
+        },
+        "BaseballFielder.IsTraining.sum": {
+            "value": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "count": 132
+        },
+        "BaseballFielder.BenchmarkPitcher.ZoneRate.mean": {
+            "value": 1.0,
+            "min": 0.3333333333333333,
+            "max": 1.0,
+            "count": 42
+        },
+        "BaseballFielder.BenchmarkPitcher.ZoneRate.sum": {
+            "value": 4.0,
+            "min": 1.0,
+            "max": 9.0,
+            "count": 42
+        },
+        "BaseballFielder.BenchmarkPitcher.ZoneSwingRate.mean": {
+            "value": 0.25,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 42
+        },
+        "BaseballFielder.BenchmarkPitcher.ZoneSwingRate.sum": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 4.0,
+            "count": 42
+        },
+        "BaseballFielder.BenchmarkPitcher.ContactRate.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 36
+        },
+        "BaseballFielder.BenchmarkPitcher.ContactRate.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 36
+        },
+        "BaseballFielder.BenchmarkPitcher.Strikeout.mean": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 39
+        },
+        "BaseballFielder.BenchmarkPitcher.Strikeout.sum": {
+            "value": 2.0,
+            "min": 0.0,
+            "max": 3.0,
+            "count": 39
+        },
+        "BaseballFielder.BenchmarkPitcher.Walk.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 39
+        },
+        "BaseballFielder.BenchmarkPitcher.Walk.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 39
+        },
+        "BaseballFielder.BenchmarkPitcher.InPlay.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 39
+        },
+        "BaseballFielder.BenchmarkPitcher.InPlay.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 39
+        },
+        "BaseballFielder.BenchmarkPitcher.BatterOutcome.mean": {
+            "value": -1.0,
+            "min": -1.0,
+            "max": 3.0,
+            "count": 39
+        },
+        "BaseballFielder.BenchmarkPitcher.BatterOutcome.sum": {
+            "value": -2.0,
+            "min": -3.0,
+            "max": 3.0,
+            "count": 39
+        },
+        "BaseballFielder.BenchmarkPitcher.OnBase.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 39
+        },
+        "BaseballFielder.BenchmarkPitcher.OnBase.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 39
+        },
+        "BaseballFielder.HalfInning.Runs.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 5.0,
+            "count": 62
+        },
+        "BaseballFielder.HalfInning.Runs.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 8.0,
+            "count": 62
+        },
+        "BaseballFielder.BenchmarkBatter.ExitSpeed(km.h).mean": {
+            "value": 75.09884643554688,
+            "min": 47.90385437011719,
+            "max": 173.4654998779297,
+            "count": 37
+        },
+        "BaseballFielder.BenchmarkBatter.ExitSpeed(km.h).sum": {
+            "value": 150.19769287109375,
+            "min": 47.90385437011719,
+            "max": 262.6576690673828,
+            "count": 37
+        },
+        "BaseballFielder.BenchmarkBatter.HardHit.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 37
+        },
+        "BaseballFielder.BenchmarkBatter.HardHit.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 37
+        },
+        "BaseballFielder.BenchmarkBatter.HomeRun.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 37
+        },
+        "BaseballFielder.BenchmarkBatter.HomeRun.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 37
+        },
+        "BaseballFielder.Losses.PolicyLoss.mean": {
+            "value": 0.044555076686568405,
+            "min": 0.038241218824017174,
+            "max": 0.05941607202597273,
+            "count": 61
+        },
+        "BaseballFielder.Losses.PolicyLoss.sum": {
+            "value": 0.044555076686568405,
+            "min": 0.038241218824017174,
+            "max": 0.05941607202597273,
+            "count": 61
+        },
+        "BaseballFielder.Losses.ValueLoss.mean": {
+            "value": 0.04342694842489436,
+            "min": 0.011011925635530669,
+            "max": 0.15583658420170346,
+            "count": 61
+        },
+        "BaseballFielder.Losses.ValueLoss.sum": {
+            "value": 0.04342694842489436,
+            "min": 0.011011925635530669,
+            "max": 0.15583658420170346,
+            "count": 61
+        },
+        "BaseballFielder.Losses.BaselineLoss.mean": {
+            "value": 0.08084229511829714,
+            "min": 0.03427943371820683,
+            "max": 0.2308613653294742,
+            "count": 61
+        },
+        "BaseballFielder.Losses.BaselineLoss.sum": {
+            "value": 0.08084229511829714,
+            "min": 0.03427943371820683,
+            "max": 0.2308613653294742,
+            "count": 61
+        },
+        "BaseballFielder.Policy.LearningRate.mean": {
+            "value": 0.0002899638033454,
+            "min": 0.0002899638033454,
+            "max": 0.00029381340206219997,
+            "count": 61
+        },
+        "BaseballFielder.Policy.LearningRate.sum": {
+            "value": 0.0002899638033454,
+            "min": 0.0002899638033454,
+            "max": 0.00029381340206219997,
+            "count": 61
+        },
+        "BaseballFielder.Policy.Epsilon.mean": {
+            "value": 0.1966546,
+            "min": 0.1966546,
+            "max": 0.19793780000000002,
+            "count": 61
+        },
+        "BaseballFielder.Policy.Epsilon.sum": {
+            "value": 0.1966546,
+            "min": 0.1966546,
+            "max": 0.19793780000000002,
+            "count": 61
+        },
+        "BaseballFielder.Policy.Beta.mean": {
+            "value": 0.0009668805400000002,
+            "min": 0.0009668805400000002,
+            "max": 0.0009795842199999997,
+            "count": 61
+        },
+        "BaseballFielder.Policy.Beta.sum": {
+            "value": 0.0009668805400000002,
+            "min": 0.0009668805400000002,
+            "max": 0.0009795842199999997,
+            "count": 61
+        },
+        "BaseballRunner.BenchmarkBatter.ZoneRate.mean": {
+            "value": 0.6,
+            "min": 0.25,
+            "max": 0.6,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.ZoneRate.sum": {
+            "value": 12.0,
+            "min": 3.0,
+            "max": 19.0,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.ChaseRate.mean": {
+            "value": 0.375,
+            "min": 0.125,
+            "max": 0.42105263157894735,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.ChaseRate.sum": {
+            "value": 3.0,
+            "min": 1.0,
+            "max": 9.0,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.ContactRate.mean": {
+            "value": 0.5,
+            "min": 0.15384615384615385,
+            "max": 0.7777777777777778,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.ContactRate.sum": {
+            "value": 5.0,
+            "min": 1.0,
+            "max": 7.0,
+            "count": 9
+        },
+        "BaseballRunner.Env.AbortedPlay.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.Env.AbortedPlay.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.Policy.Entropy.mean": {
+            "value": 0.6813824772834778,
+            "min": 0.6141139268875122,
+            "max": 0.6975687146186829,
+            "count": 9
+        },
+        "BaseballRunner.Policy.Entropy.sum": {
+            "value": 6698.67138671875,
+            "min": 3184.830078125,
+            "max": 6929.6474609375,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.ZoneSwingRate.mean": {
+            "value": 0.5833333333333334,
+            "min": 0.375,
+            "max": 0.8888888888888888,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.ZoneSwingRate.sum": {
+            "value": 7.0,
+            "min": 2.0,
+            "max": 14.0,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.Strikeout.mean": {
+            "value": 0.2857142857142857,
+            "min": 0.0,
+            "max": 0.5714285714285714,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.Strikeout.sum": {
+            "value": 2.0,
+            "min": 0.0,
+            "max": 5.0,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.Walk.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.5,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.Walk.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 2.0,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.InPlay.mean": {
+            "value": 0.7142857142857143,
+            "min": 0.25,
+            "max": 1.0,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.InPlay.sum": {
+            "value": 5.0,
+            "min": 1.0,
+            "max": 7.0,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.BatterOutcome.mean": {
+            "value": 0.8571428571428571,
+            "min": -0.07142857142857142,
+            "max": 1.6428571428571428,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.BatterOutcome.sum": {
+            "value": 6.0,
+            "min": -0.5,
+            "max": 11.5,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.OnBase.mean": {
+            "value": 0.7142857142857143,
+            "min": 0.42857142857142855,
+            "max": 1.0,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.OnBase.sum": {
+            "value": 5.0,
+            "min": 3.0,
+            "max": 7.0,
+            "count": 9
+        },
+        "BaseballRunner.PitchCall.Ball.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.013422818791946308,
+            "count": 9
+        },
+        "BaseballRunner.PitchCall.Ball.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 2.0,
+            "count": 9
+        },
+        "BaseballRunner.PitchCall.CalledStrike.mean": {
+            "value": 0.410958904109589,
+            "min": 0.410958904109589,
+            "max": 0.5524475524475524,
+            "count": 9
+        },
+        "BaseballRunner.PitchCall.CalledStrike.sum": {
+            "value": 60.0,
+            "min": 37.0,
+            "max": 97.0,
+            "count": 9
+        },
+        "BaseballRunner.PitchCall.SwingingStrike.mean": {
+            "value": 0.2808219178082192,
+            "min": 0.13286713286713286,
+            "max": 0.2808219178082192,
+            "count": 9
+        },
+        "BaseballRunner.PitchCall.SwingingStrike.sum": {
+            "value": 41.0,
+            "min": 14.0,
+            "max": 43.0,
+            "count": 9
+        },
+        "BaseballRunner.PitchCall.Foul.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.00625,
+            "count": 9
+        },
+        "BaseballRunner.PitchCall.Foul.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 9
+        },
+        "BaseballRunner.PitchCall.InPlay.mean": {
+            "value": 0.3082191780821918,
+            "min": 0.25133689839572193,
+            "max": 0.3146853146853147,
+            "count": 9
+        },
+        "BaseballRunner.PitchCall.InPlay.sum": {
+            "value": 45.0,
+            "min": 22.0,
+            "max": 52.0,
+            "count": 9
+        },
+        "BaseballRunner.PlateDiscipline.ZoneRate.mean": {
+            "value": 0.9794520547945206,
+            "min": 0.9794520547945206,
+            "max": 1.0,
+            "count": 9
+        },
+        "BaseballRunner.PlateDiscipline.ZoneRate.sum": {
+            "value": 143.0,
+            "min": 73.0,
+            "max": 185.0,
+            "count": 9
+        },
+        "BaseballRunner.PlateDiscipline.SwingRate.mean": {
+            "value": 0.589041095890411,
+            "min": 0.436241610738255,
+            "max": 0.589041095890411,
+            "count": 9
+        },
+        "BaseballRunner.PlateDiscipline.SwingRate.sum": {
+            "value": 86.0,
+            "min": 36.0,
+            "max": 90.0,
+            "count": 9
+        },
+        "BaseballRunner.PlateDiscipline.ZoneSwingRate.mean": {
+            "value": 0.5804195804195804,
+            "min": 0.4397163120567376,
+            "max": 0.5804195804195804,
+            "count": 9
+        },
+        "BaseballRunner.PlateDiscipline.ZoneSwingRate.sum": {
+            "value": 83.0,
+            "min": 36.0,
+            "max": 88.0,
+            "count": 9
+        },
+        "BaseballRunner.Pitch.Speed(km.h).mean": {
+            "value": 133.01960827553108,
+            "min": 131.76678802490235,
+            "max": 133.78651432302547,
+            "count": 9
+        },
+        "BaseballRunner.Pitch.Speed(km.h).sum": {
+            "value": 19420.86280822754,
+            "min": 9703.467658996582,
+            "max": 25018.07817840576,
+            "count": 9
+        },
+        "BaseballRunner.PitchType.FourSeam.mean": {
+            "value": 0.2534246575342466,
+            "min": 0.12751677852348994,
+            "max": 0.2602739726027397,
+            "count": 9
+        },
+        "BaseballRunner.PitchType.FourSeam.sum": {
+            "value": 37.0,
+            "min": 19.0,
+            "max": 39.0,
+            "count": 9
+        },
+        "BaseballRunner.PitchType.TwoSeam.mean": {
+            "value": 0.1917808219178082,
+            "min": 0.1917808219178082,
+            "max": 0.2953020134228188,
+            "count": 9
+        },
+        "BaseballRunner.PitchType.TwoSeam.sum": {
+            "value": 28.0,
+            "min": 18.0,
+            "max": 51.0,
+            "count": 9
+        },
+        "BaseballRunner.PitchType.Curve.mean": {
+            "value": 0.17123287671232876,
+            "min": 0.09826589595375723,
+            "max": 0.17123287671232876,
+            "count": 9
+        },
+        "BaseballRunner.PitchType.Curve.sum": {
+            "value": 25.0,
+            "min": 11.0,
+            "max": 26.0,
+            "count": 9
+        },
+        "BaseballRunner.PitchType.Slider.mean": {
+            "value": 0.1917808219178082,
+            "min": 0.11188811188811189,
+            "max": 0.1917808219178082,
+            "count": 9
+        },
+        "BaseballRunner.PitchType.Slider.sum": {
+            "value": 28.0,
+            "min": 10.0,
+            "max": 32.0,
+            "count": 9
+        },
+        "BaseballRunner.PitchType.Changeup.mean": {
+            "value": 0.1917808219178082,
+            "min": 0.1917808219178082,
+            "max": 0.29411764705882354,
+            "count": 9
+        },
+        "BaseballRunner.PitchType.Changeup.sum": {
+            "value": 28.0,
+            "min": 15.0,
+            "max": 55.0,
+            "count": 9
+        },
+        "BaseballRunner.BatterReward.Contact.mean": {
+            "value": 0.1541095890410959,
+            "min": 0.12566844919786097,
+            "max": 0.15734265734265734,
+            "count": 9
+        },
+        "BaseballRunner.BatterReward.Contact.sum": {
+            "value": 22.5,
+            "min": 11.0,
+            "max": 26.0,
+            "count": 9
+        },
+        "BaseballRunner.BatterReward.Miss.mean": {
+            "value": -0.6917808219178082,
+            "min": -0.7486631016042781,
+            "max": -0.6853146853146853,
+            "count": 9
+        },
+        "BaseballRunner.BatterReward.Miss.sum": {
+            "value": -101.0,
+            "min": -140.0,
+            "max": -51.0,
+            "count": 9
+        },
+        "BaseballRunner.BatterReward.ExitSpeed.mean": {
+            "value": 0.056618102290348644,
+            "min": 0.056618102290348644,
+            "max": 0.09696045911405235,
+            "count": 9
+        },
+        "BaseballRunner.BatterReward.ExitSpeed.sum": {
+            "value": 8.266242934390903,
+            "min": 6.655328765511513,
+            "max": 15.513673458248377,
+            "count": 9
+        },
+        "BaseballRunner.BatterReward.PopFly.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.BatterReward.PopFly.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.BatterReward.Foul.mean": {
+            "value": 0.0,
+            "min": -0.009375,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.BatterReward.Foul.sum": {
+            "value": 0.0,
+            "min": -1.5,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.BatterReward.HomeRun.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.BatterReward.HomeRun.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.BatterReward.PitchTotal.mean": {
+            "value": -0.4810531302674176,
+            "min": -0.5557152090225628,
+            "max": -0.446614513030419,
+            "count": 9
+        },
+        "BaseballRunner.BatterReward.PitchTotal.sum": {
+            "value": -70.23375701904297,
+            "min": -103.91874408721924,
+            "max": -33.34467136859894,
+            "count": 9
+        },
+        "BaseballRunner.Step.mean": {
+            "value": 229944.0,
+            "min": 149957.0,
+            "max": 229944.0,
+            "count": 9
+        },
+        "BaseballRunner.Step.sum": {
+            "value": 229944.0,
+            "min": 149957.0,
+            "max": 229944.0,
+            "count": 9
+        },
+        "BaseballRunner.Policy.ExtrinsicBaselineEstimate.mean": {
+            "value": 1.372799277305603,
+            "min": 1.3499802350997925,
+            "max": 1.5054341554641724,
+            "count": 9
+        },
+        "BaseballRunner.Policy.ExtrinsicBaselineEstimate.sum": {
+            "value": 266.32305908203125,
+            "min": 125.54816436767578,
+            "max": 301.0868225097656,
+            "count": 9
+        },
+        "BaseballRunner.Policy.ExtrinsicValueEstimate.mean": {
+            "value": 1.349233627319336,
+            "min": 1.2933647632598877,
+            "max": 1.4671375751495361,
+            "count": 9
+        },
+        "BaseballRunner.Policy.ExtrinsicValueEstimate.sum": {
+            "value": 261.7513122558594,
+            "min": 120.28292846679688,
+            "max": 293.4275207519531,
+            "count": 9
+        },
+        "BaseballRunner.Environment.EpisodeLength.mean": {
+            "value": 95.37254901960785,
+            "min": 91.97272727272727,
+            "max": 96.31914893617021,
+            "count": 9
+        },
+        "BaseballRunner.Environment.EpisodeLength.sum": {
+            "value": 9728.0,
+            "min": 4527.0,
+            "max": 10139.0,
+            "count": 9
+        },
+        "BaseballRunner.PlateDiscipline.ContactRate.mean": {
+            "value": 0.5232558139534884,
+            "min": 0.5116279069767442,
+            "max": 0.703125,
+            "count": 9
+        },
+        "BaseballRunner.PlateDiscipline.ContactRate.sum": {
+            "value": 45.0,
+            "min": 22.0,
+            "max": 52.0,
+            "count": 9
+        },
+        "BaseballRunner.BattedBall.ExitSpeed(km.h).mean": {
+            "value": 100.19580671522353,
+            "min": 100.19580671522353,
+            "max": 117.21027044816451,
+            "count": 9
+        },
+        "BaseballRunner.BattedBall.ExitSpeed(km.h).sum": {
+            "value": 4508.811302185059,
+            "min": 2515.588447570801,
+            "max": 5808.250549316406,
+            "count": 9
+        },
+        "BaseballRunner.BattedBall.LaunchAngle(deg).mean": {
+            "value": -15.16184008601639,
+            "min": -20.526617104018275,
+            "max": -14.999951047367519,
+            "count": 9
+        },
+        "BaseballRunner.BattedBall.LaunchAngle(deg).sum": {
+            "value": -682.2828038707376,
+            "min": -903.1711525768042,
+            "max": -437.2564754486084,
+            "count": 9
+        },
+        "BaseballRunner.BattedBall.SprayAngle(deg).mean": {
+            "value": 13.587111292945014,
+            "min": 6.50864886071371,
+            "max": 13.587111292945014,
+            "count": 9
+        },
+        "BaseballRunner.BattedBall.SprayAngle(deg).sum": {
+            "value": 611.4200081825256,
+            "min": 185.45625400543213,
+            "max": 611.4200081825256,
+            "count": 9
+        },
+        "BaseballRunner.BattedBall.Fair.mean": {
+            "value": 1.0,
+            "min": 0.9787234042553191,
+            "max": 1.0,
+            "count": 9
+        },
+        "BaseballRunner.BattedBall.Fair.sum": {
+            "value": 45.0,
+            "min": 22.0,
+            "max": 52.0,
+            "count": 9
+        },
+        "BaseballRunner.BattedBall.HomeRun.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.BattedBall.HomeRun.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.BattedBall.Distance(m).mean": {
+            "value": 4.693525817659166,
+            "min": 3.056247055530548,
+            "max": 4.693525817659166,
+            "count": 9
+        },
+        "BaseballRunner.BattedBall.Distance(m).sum": {
+            "value": 211.20866179466248,
+            "min": 97.7257696390152,
+            "max": 233.00412452220917,
+            "count": 9
+        },
+        "BaseballRunner.Swing.TimingError(ms).mean": {
+            "value": 11.86609944529917,
+            "min": 10.774536446679997,
+            "max": 15.202657288975185,
+            "count": 9
+        },
+        "BaseballRunner.Swing.TimingError(ms).sum": {
+            "value": 1032.3506517410278,
+            "min": 547.2956624031067,
+            "max": 1271.463651895523,
+            "count": 9
+        },
+        "BaseballRunner.Swing.Bat-BallDistance(cm).mean": {
+            "value": 39.53268157476666,
+            "min": 10.191602110862732,
+            "max": 39.53268157476666,
+            "count": 9
+        },
+        "BaseballRunner.Swing.Bat-BallDistance(cm).sum": {
+            "value": 3439.3432970046997,
+            "min": 366.89767599105835,
+            "max": 3439.3432970046997,
+            "count": 9
+        },
+        "BaseballRunner.Defense.Fielded.mean": {
+            "value": 0.0196078431372549,
+            "min": 0.0196078431372549,
+            "max": 0.16666666666666666,
+            "count": 9
+        },
+        "BaseballRunner.Defense.Fielded.sum": {
+            "value": 1.0,
+            "min": 1.0,
+            "max": 7.0,
+            "count": 9
+        },
+        "BaseballRunner.DefenseReward.Outcome.mean": {
+            "value": -1.7647058823529411,
+            "min": -1.9635416666666667,
+            "max": -1.6770833333333333,
+            "count": 9
+        },
+        "BaseballRunner.DefenseReward.Outcome.sum": {
+            "value": -90.0,
+            "min": -97.75,
+            "max": -40.25,
+            "count": 9
+        },
+        "BaseballRunner.DefenseReward.Shaping.mean": {
+            "value": 0.18178212219009213,
+            "min": 0.16824276444430536,
+            "max": 0.20621676772248512,
+            "count": 9
+        },
+        "BaseballRunner.DefenseReward.Shaping.sum": {
+            "value": 9.270888231694698,
+            "min": 4.349066644906998,
+            "max": 10.51705515384674,
+            "count": 9
+        },
+        "BaseballRunner.DefenseReward.ChaseShaping.mean": {
+            "value": 2.2111124127518895,
+            "min": 1.9829883476098378,
+            "max": 2.2111124127518895,
+            "count": 9
+        },
+        "BaseballRunner.DefenseReward.ChaseShaping.sum": {
+            "value": 112.76673305034637,
+            "min": 47.59172034263611,
+            "max": 112.76673305034637,
+            "count": 9
+        },
+        "BaseballRunner.DefenseReward.InfieldPosition.mean": {
+            "value": -0.23743526666772133,
+            "min": -0.3986985795199871,
+            "max": -0.23743526666772133,
+            "count": 9
+        },
+        "BaseballRunner.DefenseReward.InfieldPosition.sum": {
+            "value": -12.109198600053787,
+            "min": -18.747352607548237,
+            "max": -9.56876590847969,
+            "count": 9
+        },
+        "BaseballRunner.Defense.Cover1B.mean": {
+            "value": 0.11764705882352941,
+            "min": 0.0,
+            "max": 0.20754716981132076,
+            "count": 9
+        },
+        "BaseballRunner.Defense.Cover1B.sum": {
+            "value": 6.0,
+            "min": 0.0,
+            "max": 11.0,
+            "count": 9
+        },
+        "BaseballRunner.Defense.Cover2B(SS).mean": {
+            "value": 0.0196078431372549,
+            "min": 0.0,
+            "max": 0.09803921568627451,
+            "count": 9
+        },
+        "BaseballRunner.Defense.Cover2B(SS).sum": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 5.0,
+            "count": 9
+        },
+        "BaseballRunner.Defense.Cover3B.mean": {
+            "value": 0.13725490196078433,
+            "min": 0.0,
+            "max": 0.13725490196078433,
+            "count": 9
+        },
+        "BaseballRunner.Defense.Cover3B.sum": {
+            "value": 7.0,
+            "min": 0.0,
+            "max": 7.0,
+            "count": 9
+        },
+        "BaseballRunner.PlateAppearance.Strikeout.mean": {
+            "value": 0.23728813559322035,
+            "min": 0.22413793103448276,
+            "max": 0.35294117647058826,
+            "count": 9
+        },
+        "BaseballRunner.PlateAppearance.Strikeout.sum": {
+            "value": 14.0,
+            "min": 8.0,
+            "max": 25.0,
+            "count": 9
+        },
+        "BaseballRunner.PlateAppearance.Walk.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.PlateAppearance.Walk.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.PlateAppearance.InPlay.mean": {
+            "value": 0.7627118644067796,
+            "min": 0.6470588235294118,
+            "max": 0.7758620689655172,
+            "count": 9
+        },
+        "BaseballRunner.PlateAppearance.InPlay.sum": {
+            "value": 45.0,
+            "min": 22.0,
+            "max": 52.0,
+            "count": 9
+        },
+        "BaseballRunner.PlateAppearance.Pitches.mean": {
+            "value": 2.4915254237288136,
+            "min": 2.433333333333333,
+            "max": 2.6140350877192984,
+            "count": 9
+        },
+        "BaseballRunner.PlateAppearance.Pitches.sum": {
+            "value": 147.0,
+            "min": 73.0,
+            "max": 187.0,
+            "count": 9
+        },
+        "BaseballRunner.BatterReward.Outcome.mean": {
+            "value": 0.8050847457627118,
+            "min": 0.5441176470588235,
+            "max": 0.896551724137931,
+            "count": 9
+        },
+        "BaseballRunner.BatterReward.Outcome.sum": {
+            "value": 47.5,
+            "min": 22.5,
+            "max": 54.5,
+            "count": 9
+        },
+        "BaseballRunner.PlateAppearance.OnBase.mean": {
+            "value": 0.7627118644067796,
+            "min": 0.6176470588235294,
+            "max": 0.7719298245614035,
+            "count": 9
+        },
+        "BaseballRunner.PlateAppearance.OnBase.sum": {
+            "value": 45.0,
+            "min": 22.0,
+            "max": 52.0,
+            "count": 9
+        },
+        "BaseballRunner.Play.Outs.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.045454545454545456,
+            "count": 9
+        },
+        "BaseballRunner.Play.Outs.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 2.0,
+            "count": 9
+        },
+        "BaseballRunner.Play.Runs.mean": {
+            "value": 0.7333333333333333,
+            "min": 0.7333333333333333,
+            "max": 0.9565217391304348,
+            "count": 9
+        },
+        "BaseballRunner.Play.Runs.sum": {
+            "value": 33.0,
+            "min": 17.0,
+            "max": 44.0,
+            "count": 9
+        },
+        "BaseballRunner.Play.BatterBases.mean": {
+            "value": 2.0,
+            "min": 1.9090909090909092,
+            "max": 2.0,
+            "count": 9
+        },
+        "BaseballRunner.Play.BatterBases.sum": {
+            "value": 90.0,
+            "min": 44.0,
+            "max": 104.0,
+            "count": 9
+        },
+        "BaseballRunner.Play.RunnerOuts.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.022727272727272728,
+            "count": 9
+        },
+        "BaseballRunner.Play.RunnerOuts.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 9
+        },
+        "BaseballRunner.Play.BasesAdvanced.mean": {
+            "value": 3.7777777777777777,
+            "min": 3.75,
+            "max": 4.1521739130434785,
+            "count": 9
+        },
+        "BaseballRunner.Play.BasesAdvanced.sum": {
+            "value": 170.0,
+            "min": 83.0,
+            "max": 195.0,
+            "count": 9
+        },
+        "BaseballRunner.Play.LiveTime(s).mean": {
+            "value": 11.507106505499946,
+            "min": 11.253177385438573,
+            "max": 11.507106505499946,
+            "count": 9
+        },
+        "BaseballRunner.Play.LiveTime(s).sum": {
+            "value": 517.8197927474976,
+            "min": 252.83990097045898,
+            "max": 597.6597633361816,
+            "count": 9
+        },
+        "BaseballRunner.PlayEnd.FlyOut.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.PlayEnd.FlyOut.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.PlayEnd.ForceOut.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.022222222222222223,
+            "count": 9
+        },
+        "BaseballRunner.PlayEnd.ForceOut.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 9
+        },
+        "BaseballRunner.PlayEnd.TagOut.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.022727272727272728,
+            "count": 9
+        },
+        "BaseballRunner.PlayEnd.TagOut.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 9
+        },
+        "BaseballRunner.PlayEnd.RunnerSafe.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.PlayEnd.RunnerSafe.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.PlayEnd.RunScored.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.PlayEnd.RunScored.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.PlayEnd.HomeRun.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.PlayEnd.HomeRun.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.PlayEnd.GroundRuleDouble.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.PlayEnd.GroundRuleDouble.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.PlayEnd.Timeout.mean": {
+            "value": 1.0,
+            "min": 0.9772727272727273,
+            "max": 1.0,
+            "count": 9
+        },
+        "BaseballRunner.PlayEnd.Timeout.sum": {
+            "value": 45.0,
+            "min": 22.0,
+            "max": 52.0,
+            "count": 9
+        },
+        "BaseballRunner.Matchup.BatterWin.mean": {
+            "value": 0.7627118644067796,
+            "min": 0.6323529411764706,
+            "max": 0.7758620689655172,
+            "count": 9
+        },
+        "BaseballRunner.Matchup.BatterWin.sum": {
+            "value": 45.0,
+            "min": 22.0,
+            "max": 52.0,
+            "count": 9
+        },
+        "BaseballRunner.Matchup.PitcherWin.mean": {
+            "value": 0.23728813559322035,
+            "min": 0.22413793103448276,
+            "max": 0.36764705882352944,
+            "count": 9
+        },
+        "BaseballRunner.Matchup.PitcherWin.sum": {
+            "value": 14.0,
+            "min": 8.0,
+            "max": 25.0,
+            "count": 9
+        },
+        "BaseballRunner.Matchup.Draw.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.Matchup.Draw.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.Environment.CumulativeReward.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.Environment.CumulativeReward.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.Policy.ExtrinsicReward.mean": {
+            "value": 2.042079207920792,
+            "min": 2.042079207920792,
+            "max": 2.217289719626168,
+            "count": 9
+        },
+        "BaseballRunner.Policy.ExtrinsicReward.sum": {
+            "value": 206.25,
+            "min": 98.5,
+            "max": 237.25,
+            "count": 9
+        },
+        "BaseballRunner.Environment.GroupCumulativeReward.mean": {
+            "value": 2.042079207920792,
+            "min": 2.042079207920792,
+            "max": 2.217289719626168,
+            "count": 9
+        },
+        "BaseballRunner.Environment.GroupCumulativeReward.sum": {
+            "value": 206.25,
+            "min": 98.5,
+            "max": 237.25,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkPitcher.ZoneRate.mean": {
+            "value": 0.8181818181818182,
+            "min": 0.7333333333333333,
+            "max": 1.0,
+            "count": 8
+        },
+        "BaseballRunner.BenchmarkPitcher.ZoneRate.sum": {
+            "value": 18.0,
+            "min": 5.0,
+            "max": 25.0,
+            "count": 8
+        },
+        "BaseballRunner.BenchmarkPitcher.ZoneSwingRate.mean": {
+            "value": 0.5,
+            "min": 0.09090909090909091,
+            "max": 0.6,
+            "count": 8
+        },
+        "BaseballRunner.BenchmarkPitcher.ZoneSwingRate.sum": {
+            "value": 9.0,
+            "min": 1.0,
+            "max": 10.0,
+            "count": 8
+        },
+        "BaseballRunner.BenchmarkPitcher.ContactRate.mean": {
+            "value": 0.08333333333333333,
+            "min": 0.0,
+            "max": 0.08333333333333333,
+            "count": 8
+        },
+        "BaseballRunner.BenchmarkPitcher.ContactRate.sum": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 8
+        },
+        "BaseballRunner.BenchmarkPitcher.Strikeout.mean": {
+            "value": 0.8571428571428571,
+            "min": 0.8571428571428571,
+            "max": 1.0,
+            "count": 8
+        },
+        "BaseballRunner.BenchmarkPitcher.Strikeout.sum": {
+            "value": 6.0,
+            "min": 2.0,
+            "max": 10.0,
+            "count": 8
+        },
+        "BaseballRunner.BenchmarkPitcher.Walk.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 8
+        },
+        "BaseballRunner.BenchmarkPitcher.Walk.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 8
+        },
+        "BaseballRunner.BenchmarkPitcher.InPlay.mean": {
+            "value": 0.14285714285714285,
+            "min": 0.0,
+            "max": 0.14285714285714285,
+            "count": 8
+        },
+        "BaseballRunner.BenchmarkPitcher.InPlay.sum": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 8
+        },
+        "BaseballRunner.BenchmarkPitcher.BatterOutcome.mean": {
+            "value": -0.42857142857142855,
+            "min": -1.0,
+            "max": -0.42857142857142855,
+            "count": 8
+        },
+        "BaseballRunner.BenchmarkPitcher.BatterOutcome.sum": {
+            "value": -3.0,
+            "min": -10.0,
+            "max": -2.0,
+            "count": 8
+        },
+        "BaseballRunner.BenchmarkPitcher.OnBase.mean": {
+            "value": 0.14285714285714285,
+            "min": 0.0,
+            "max": 0.14285714285714285,
+            "count": 8
+        },
+        "BaseballRunner.BenchmarkPitcher.OnBase.sum": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 8
+        },
+        "BaseballRunner.HalfInning.Runs.mean": {
+            "value": 1.2727272727272727,
+            "min": 0.09090909090909091,
+            "max": 2.2857142857142856,
+            "count": 9
+        },
+        "BaseballRunner.HalfInning.Runs.sum": {
+            "value": 14.0,
+            "min": 1.0,
+            "max": 25.0,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.ExitSpeed(km.h).mean": {
+            "value": 95.43804092407227,
+            "min": 47.90385437011719,
+            "max": 127.639892578125,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.ExitSpeed(km.h).sum": {
+            "value": 477.1902046203613,
+            "min": 47.90385437011719,
+            "max": 802.7071304321289,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.HardHit.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.2,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.HardHit.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.HomeRun.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.BenchmarkBatter.HomeRun.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 9
+        },
+        "BaseballRunner.Losses.PolicyLoss.mean": {
+            "value": 0.06850326349619233,
+            "min": 0.061032439552946016,
+            "max": 0.07108978107377577,
+            "count": 9
+        },
+        "BaseballRunner.Losses.PolicyLoss.sum": {
+            "value": 0.13700652699238466,
+            "min": 0.07108978107377577,
+            "max": 0.2107022005948238,
+            "count": 9
+        },
+        "BaseballRunner.Losses.ValueLoss.mean": {
+            "value": 0.017848665949713904,
+            "min": 0.013559221136044169,
+            "max": 0.03545298249324939,
+            "count": 9
+        },
+        "BaseballRunner.Losses.ValueLoss.sum": {
+            "value": 0.03569733189942781,
+            "min": 0.018035364502187196,
+            "max": 0.07090596498649877,
+            "count": 9
+        },
+        "BaseballRunner.Losses.BaselineLoss.mean": {
+            "value": 0.001231380996008132,
+            "min": 0.0010751011324524977,
+            "max": 0.017843664465241695,
+            "count": 9
+        },
+        "BaseballRunner.Losses.BaselineLoss.sum": {
+            "value": 0.002462761992016264,
+            "min": 0.0019113782509521116,
+            "max": 0.03568732893048339,
+            "count": 9
+        },
+        "BaseballRunner.Policy.LearningRate.mean": {
+            "value": 0.0002660783363072249,
+            "min": 0.0002660783363072249,
+            "max": 0.00027761115746294994,
+            "count": 9
+        },
+        "BaseballRunner.Policy.LearningRate.sum": {
+            "value": 0.0005321566726144498,
+            "min": 0.00027761115746294994,
+            "max": 0.000825414024862,
+            "count": 9
+        },
+        "BaseballRunner.Policy.Epsilon.mean": {
+            "value": 0.188692775,
+            "min": 0.188692775,
+            "max": 0.19253705000000002,
+            "count": 9
+        },
+        "BaseballRunner.Policy.Epsilon.sum": {
+            "value": 0.37738555,
+            "min": 0.19253705000000002,
+            "max": 0.5751379999999999,
+            "count": 9
+        },
+        "BaseballRunner.Policy.Beta.mean": {
+            "value": 0.0044357694725,
+            "min": 0.0044357694725,
+            "max": 0.004627598795,
+            "count": 9
+        },
+        "BaseballRunner.Policy.Beta.sum": {
+            "value": 0.008871538945,
+            "min": 0.004627598795,
+            "max": 0.013759386200000001,
+            "count": 9
+        },
+        "BaseballRunner.IsTraining.mean": {
+            "value": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "count": 9
+        },
+        "BaseballRunner.IsTraining.sum": {
+            "value": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "count": 9
+        },
+        "BaseballFielder.PlateDiscipline.ChaseRate.mean": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 14
+        },
+        "BaseballFielder.PlateDiscipline.ChaseRate.sum": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 2.0,
+            "count": 14
+        },
+        "BaseballFielder.BenchmarkPitcher.ChaseRate.mean": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 20
+        },
+        "BaseballFielder.BenchmarkPitcher.ChaseRate.sum": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 2.0,
+            "count": 20
+        },
+        "BaseballRunner.PlateDiscipline.ChaseRate.mean": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 7
+        },
+        "BaseballRunner.PlateDiscipline.ChaseRate.sum": {
+            "value": 3.0,
+            "min": 0.0,
+            "max": 3.0,
+            "count": 7
+        },
+        "BaseballRunner.BenchmarkPitcher.ChaseRate.mean": {
+            "value": 0.75,
+            "min": 0.6666666666666666,
+            "max": 1.0,
+            "count": 7
+        },
+        "BaseballRunner.BenchmarkPitcher.ChaseRate.sum": {
+            "value": 3.0,
+            "min": 1.0,
+            "max": 5.0,
+            "count": 7
+        },
+        "BaseballBatter.Policy.Entropy.mean": {
+            "value": 0.8977776765823364,
+            "min": 0.8885411620140076,
+            "max": 0.8977776765823364,
+            "count": 2
+        },
+        "BaseballBatter.Policy.Entropy.sum": {
+            "value": 17975.3046875,
+            "min": 17288.345703125,
+            "max": 17975.3046875,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.ZoneRate.mean": {
+            "value": 0.4819277108433735,
+            "min": 0.45217391304347826,
+            "max": 0.4819277108433735,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.ZoneRate.sum": {
+            "value": 40.0,
+            "min": 40.0,
+            "max": 52.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.ChaseRate.mean": {
+            "value": 0.20930232558139536,
+            "min": 0.20930232558139536,
+            "max": 0.36507936507936506,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.ChaseRate.sum": {
+            "value": 9.0,
+            "min": 9.0,
+            "max": 23.0,
+            "count": 2
+        },
+        "BaseballBatter.Env.AbortedPlay.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.Env.AbortedPlay.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.PitchCall.Ball.mean": {
+            "value": 0.004601226993865031,
+            "min": 0.004601226993865031,
+            "max": 0.006791171477079796,
+            "count": 2
+        },
+        "BaseballBatter.PitchCall.Ball.sum": {
+            "value": 3.0,
+            "min": 3.0,
+            "max": 4.0,
+            "count": 2
+        },
+        "BaseballBatter.PitchCall.CalledStrike.mean": {
+            "value": 0.5214723926380368,
+            "min": 0.5214723926380368,
+            "max": 0.534804753820034,
+            "count": 2
+        },
+        "BaseballBatter.PitchCall.CalledStrike.sum": {
+            "value": 340.0,
+            "min": 315.0,
+            "max": 340.0,
+            "count": 2
+        },
+        "BaseballBatter.PitchCall.SwingingStrike.mean": {
+            "value": 0.19938650306748465,
+            "min": 0.16808149405772496,
+            "max": 0.19938650306748465,
+            "count": 2
+        },
+        "BaseballBatter.PitchCall.SwingingStrike.sum": {
+            "value": 130.0,
+            "min": 99.0,
+            "max": 130.0,
+            "count": 2
+        },
+        "BaseballBatter.PitchCall.Foul.mean": {
+            "value": 0.0015337423312883436,
+            "min": 0.0,
+            "max": 0.0015337423312883436,
+            "count": 2
+        },
+        "BaseballBatter.PitchCall.Foul.sum": {
+            "value": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 2
+        },
+        "BaseballBatter.PitchCall.InPlay.mean": {
+            "value": 0.27300613496932513,
+            "min": 0.27300613496932513,
+            "max": 0.2903225806451613,
+            "count": 2
+        },
+        "BaseballBatter.PitchCall.InPlay.sum": {
+            "value": 178.0,
+            "min": 171.0,
+            "max": 178.0,
+            "count": 2
+        },
+        "BaseballBatter.PlateDiscipline.ZoneRate.mean": {
+            "value": 0.9877300613496932,
+            "min": 0.9877300613496932,
+            "max": 0.9881154499151104,
+            "count": 2
+        },
+        "BaseballBatter.PlateDiscipline.ZoneRate.sum": {
+            "value": 644.0,
+            "min": 582.0,
+            "max": 644.0,
+            "count": 2
+        },
+        "BaseballBatter.PlateDiscipline.SwingRate.mean": {
+            "value": 0.47392638036809814,
+            "min": 0.45840407470288624,
+            "max": 0.47392638036809814,
+            "count": 2
+        },
+        "BaseballBatter.PlateDiscipline.SwingRate.sum": {
+            "value": 309.0,
+            "min": 270.0,
+            "max": 309.0,
+            "count": 2
+        },
+        "BaseballBatter.PlateDiscipline.ZoneSwingRate.mean": {
+            "value": 0.4720496894409938,
+            "min": 0.4587628865979381,
+            "max": 0.4720496894409938,
+            "count": 2
+        },
+        "BaseballBatter.PlateDiscipline.ZoneSwingRate.sum": {
+            "value": 304.0,
+            "min": 267.0,
+            "max": 304.0,
+            "count": 2
+        },
+        "BaseballBatter.Pitch.Speed(km.h).mean": {
+            "value": 132.7377898795473,
+            "min": 132.25785581527217,
+            "max": 132.7377898795473,
+            "count": 2
+        },
+        "BaseballBatter.Pitch.Speed(km.h).sum": {
+            "value": 86545.03900146484,
+            "min": 77899.87707519531,
+            "max": 86545.03900146484,
+            "count": 2
+        },
+        "BaseballBatter.PitchType.FourSeam.mean": {
+            "value": 0.2085889570552147,
+            "min": 0.1969439728353141,
+            "max": 0.2085889570552147,
+            "count": 2
+        },
+        "BaseballBatter.PitchType.FourSeam.sum": {
+            "value": 136.0,
+            "min": 116.0,
+            "max": 136.0,
+            "count": 2
+        },
+        "BaseballBatter.PitchType.TwoSeam.mean": {
+            "value": 0.23773006134969324,
+            "min": 0.23773006134969324,
+            "max": 0.2631578947368421,
+            "count": 2
+        },
+        "BaseballBatter.PitchType.TwoSeam.sum": {
+            "value": 155.0,
+            "min": 155.0,
+            "max": 155.0,
+            "count": 2
+        },
+        "BaseballBatter.PitchType.Curve.mean": {
+            "value": 0.12576687116564417,
+            "min": 0.12576687116564417,
+            "max": 0.1460101867572156,
+            "count": 2
+        },
+        "BaseballBatter.PitchType.Curve.sum": {
+            "value": 82.0,
+            "min": 82.0,
+            "max": 86.0,
+            "count": 2
+        },
+        "BaseballBatter.PitchType.Slider.mean": {
+            "value": 0.1579754601226994,
+            "min": 0.13582342954159593,
+            "max": 0.1579754601226994,
+            "count": 2
+        },
+        "BaseballBatter.PitchType.Slider.sum": {
+            "value": 103.0,
+            "min": 80.0,
+            "max": 103.0,
+            "count": 2
+        },
+        "BaseballBatter.PitchType.Changeup.mean": {
+            "value": 0.26993865030674846,
+            "min": 0.25806451612903225,
+            "max": 0.26993865030674846,
+            "count": 2
+        },
+        "BaseballBatter.PitchType.Changeup.sum": {
+            "value": 176.0,
+            "min": 152.0,
+            "max": 176.0,
+            "count": 2
+        },
+        "BaseballBatter.BatterReward.Contact.mean": {
+            "value": 0.13726993865030676,
+            "min": 0.13726993865030676,
+            "max": 0.14516129032258066,
+            "count": 2
+        },
+        "BaseballBatter.BatterReward.Contact.sum": {
+            "value": 89.5,
+            "min": 85.5,
+            "max": 89.5,
+            "count": 2
+        },
+        "BaseballBatter.BatterReward.Miss.mean": {
+            "value": -0.7208588957055214,
+            "min": -0.7208588957055214,
+            "max": -0.7028862478777589,
+            "count": 2
+        },
+        "BaseballBatter.BatterReward.Miss.sum": {
+            "value": -470.0,
+            "min": -470.0,
+            "max": -414.0,
+            "count": 2
+        },
+        "BaseballBatter.BatterReward.ExitSpeed.mean": {
+            "value": 0.08024653873943433,
+            "min": 0.08024653873943433,
+            "max": 0.08615079834339397,
+            "count": 2
+        },
+        "BaseballBatter.BatterReward.ExitSpeed.sum": {
+            "value": 52.32074325811118,
+            "min": 50.74282022425905,
+            "max": 52.32074325811118,
+            "count": 2
+        },
+        "BaseballBatter.BatterReward.PopFly.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.BatterReward.PopFly.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.BatterReward.Foul.mean": {
+            "value": -0.0023006134969325155,
+            "min": -0.0023006134969325155,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.BatterReward.Foul.sum": {
+            "value": -1.5,
+            "min": -1.5,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.BatterReward.HomeRun.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.BatterReward.HomeRun.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.BatterReward.PitchTotal.mean": {
+            "value": -0.5056430315313164,
+            "min": -0.5056430315313164,
+            "max": -0.47157415944975384,
+            "count": 2
+        },
+        "BaseballBatter.BatterReward.PitchTotal.sum": {
+            "value": -329.6792565584183,
+            "min": -329.6792565584183,
+            "max": -277.757179915905,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.ContactRate.mean": {
+            "value": 0.41025641025641024,
+            "min": 0.34615384615384615,
+            "max": 0.41025641025641024,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.ContactRate.sum": {
+            "value": 16.0,
+            "min": 16.0,
+            "max": 18.0,
+            "count": 2
+        },
+        "BaseballBatter.Step.mean": {
+            "value": 2239996.0,
+            "min": 2219937.0,
+            "max": 2239996.0,
+            "count": 2
+        },
+        "BaseballBatter.Step.sum": {
+            "value": 2239996.0,
+            "min": 2219937.0,
+            "max": 2239996.0,
+            "count": 2
+        },
+        "BaseballBatter.Policy.ExtrinsicValueEstimate.mean": {
+            "value": -0.18450352549552917,
+            "min": -0.27977827191352844,
+            "max": -0.18450352549552917,
+            "count": 2
+        },
+        "BaseballBatter.Policy.ExtrinsicValueEstimate.sum": {
+            "value": -81.18154907226562,
+            "min": -116.38775634765625,
+            "max": -81.18154907226562,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.ZoneSwingRate.mean": {
+            "value": 0.75,
+            "min": 0.5576923076923077,
+            "max": 0.75,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.ZoneSwingRate.sum": {
+            "value": 30.0,
+            "min": 29.0,
+            "max": 30.0,
+            "count": 2
+        },
+        "BaseballBatter.Environment.EpisodeLength.mean": {
+            "value": 71.17562724014337,
+            "min": 71.17562724014337,
+            "max": 72.22137404580153,
+            "count": 2
+        },
+        "BaseballBatter.Environment.EpisodeLength.sum": {
+            "value": 19858.0,
+            "min": 18922.0,
+            "max": 19858.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.Strikeout.mean": {
+            "value": 0.25,
+            "min": 0.25,
+            "max": 0.3333333333333333,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.Strikeout.sum": {
+            "value": 6.0,
+            "min": 6.0,
+            "max": 10.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.Walk.mean": {
+            "value": 0.08333333333333333,
+            "min": 0.06666666666666667,
+            "max": 0.08333333333333333,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.Walk.sum": {
+            "value": 2.0,
+            "min": 2.0,
+            "max": 2.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.InPlay.mean": {
+            "value": 0.6666666666666666,
+            "min": 0.6,
+            "max": 0.6666666666666666,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.InPlay.sum": {
+            "value": 16.0,
+            "min": 16.0,
+            "max": 18.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.BatterOutcome.mean": {
+            "value": 0.7916666666666666,
+            "min": 0.6166666666666667,
+            "max": 0.7916666666666666,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.BatterOutcome.sum": {
+            "value": 19.0,
+            "min": 18.5,
+            "max": 19.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.OnBase.mean": {
+            "value": 0.75,
+            "min": 0.6666666666666666,
+            "max": 0.75,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.OnBase.sum": {
+            "value": 18.0,
+            "min": 18.0,
+            "max": 20.0,
+            "count": 2
+        },
+        "BaseballBatter.Environment.CumulativeReward.mean": {
+            "value": -0.5435905808167492,
+            "min": -0.5435905808167492,
+            "max": -0.438943313733312,
+            "count": 2
+        },
+        "BaseballBatter.Environment.CumulativeReward.sum": {
+            "value": -151.11818146705627,
+            "min": -151.11818146705627,
+            "max": -115.00314819812775,
+            "count": 2
+        },
+        "BaseballBatter.Policy.ExtrinsicReward.mean": {
+            "value": -0.5435905808167492,
+            "min": -0.5435905808167492,
+            "max": -0.438943313733312,
+            "count": 2
+        },
+        "BaseballBatter.Policy.ExtrinsicReward.sum": {
+            "value": -151.11818146705627,
+            "min": -151.11818146705627,
+            "max": -115.00314819812775,
+            "count": 2
+        },
+        "BaseballBatter.PlateDiscipline.ContactRate.mean": {
+            "value": 0.5792880258899676,
+            "min": 0.5792880258899676,
+            "max": 0.6333333333333333,
+            "count": 2
+        },
+        "BaseballBatter.PlateDiscipline.ContactRate.sum": {
+            "value": 179.0,
+            "min": 171.0,
+            "max": 179.0,
+            "count": 2
+        },
+        "BaseballBatter.BattedBall.ExitSpeed(km.h).mean": {
+            "value": 112.96439583208308,
+            "min": 112.96439583208308,
+            "max": 114.09639019436307,
+            "count": 2
+        },
+        "BaseballBatter.BattedBall.ExitSpeed(km.h).sum": {
+            "value": 20220.62685394287,
+            "min": 19510.482723236084,
+            "max": 20220.62685394287,
+            "count": 2
+        },
+        "BaseballBatter.BattedBall.LaunchAngle(deg).mean": {
+            "value": -16.732200814858494,
+            "min": -17.76784723247701,
+            "max": -16.732200814858494,
+            "count": 2
+        },
+        "BaseballBatter.BattedBall.LaunchAngle(deg).sum": {
+            "value": -2995.0639458596706,
+            "min": -3038.3018767535686,
+            "max": -2995.0639458596706,
+            "count": 2
+        },
+        "BaseballBatter.BattedBall.SprayAngle(deg).mean": {
+            "value": 8.585987705799788,
+            "min": 8.03003903720201,
+            "max": 8.585987705799788,
+            "count": 2
+        },
+        "BaseballBatter.BattedBall.SprayAngle(deg).sum": {
+            "value": 1536.891799338162,
+            "min": 1373.136675361544,
+            "max": 1536.891799338162,
+            "count": 2
+        },
+        "BaseballBatter.BattedBall.Fair.mean": {
+            "value": 0.994413407821229,
+            "min": 0.994413407821229,
+            "max": 1.0,
+            "count": 2
+        },
+        "BaseballBatter.BattedBall.Fair.sum": {
+            "value": 178.0,
+            "min": 171.0,
+            "max": 178.0,
+            "count": 2
+        },
+        "BaseballBatter.BattedBall.HomeRun.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.BattedBall.HomeRun.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.BattedBall.Distance(m).mean": {
+            "value": 3.9019981440851246,
+            "min": 3.8286641166921247,
+            "max": 3.9019981440851246,
+            "count": 2
+        },
+        "BaseballBatter.BattedBall.Distance(m).sum": {
+            "value": 690.653671503067,
+            "min": 654.7015639543533,
+            "max": 690.653671503067,
+            "count": 2
+        },
+        "BaseballBatter.Swing.TimingError(ms).mean": {
+            "value": 13.189119689695296,
+            "min": 13.189119689695296,
+            "max": 14.43869163106989,
+            "count": 2
+        },
+        "BaseballBatter.Swing.TimingError(ms).sum": {
+            "value": 4088.627103805542,
+            "min": 3898.4467403888702,
+            "max": 4088.627103805542,
+            "count": 2
+        },
+        "BaseballBatter.Swing.Bat-BallDistance(cm).mean": {
+            "value": 15.807389019381615,
+            "min": 11.654053412543403,
+            "max": 15.807389019381615,
+            "count": 2
+        },
+        "BaseballBatter.Swing.Bat-BallDistance(cm).sum": {
+            "value": 4900.290596008301,
+            "min": 3146.5944213867188,
+            "max": 4900.290596008301,
+            "count": 2
+        },
+        "BaseballBatter.Defense.Fielded.mean": {
+            "value": 0.10256410256410256,
+            "min": 0.10052910052910052,
+            "max": 0.10256410256410256,
+            "count": 2
+        },
+        "BaseballBatter.Defense.Fielded.sum": {
+            "value": 20.0,
+            "min": 19.0,
+            "max": 20.0,
+            "count": 2
+        },
+        "BaseballBatter.DefenseReward.Outcome.mean": {
+            "value": -1.8358974358974358,
+            "min": -1.876984126984127,
+            "max": -1.8358974358974358,
+            "count": 2
+        },
+        "BaseballBatter.DefenseReward.Outcome.sum": {
+            "value": -358.0,
+            "min": -358.0,
+            "max": -354.75,
+            "count": 2
+        },
+        "BaseballBatter.DefenseReward.Shaping.mean": {
+            "value": 0.18586860646804174,
+            "min": 0.1779392263088277,
+            "max": 0.18586860646804174,
+            "count": 2
+        },
+        "BaseballBatter.DefenseReward.Shaping.sum": {
+            "value": 36.24437826126814,
+            "min": 33.63051377236843,
+            "max": 36.24437826126814,
+            "count": 2
+        },
+        "BaseballBatter.DefenseReward.ChaseShaping.mean": {
+            "value": 2.0765999702306894,
+            "min": 2.070335097413845,
+            "max": 2.0765999702306894,
+            "count": 2
+        },
+        "BaseballBatter.DefenseReward.ChaseShaping.sum": {
+            "value": 404.93699419498444,
+            "min": 391.29333341121674,
+            "max": 404.93699419498444,
+            "count": 2
+        },
+        "BaseballBatter.DefenseReward.InfieldPosition.mean": {
+            "value": -0.2951451355543656,
+            "min": -0.32619732275368674,
+            "max": -0.2951451355543656,
+            "count": 2
+        },
+        "BaseballBatter.DefenseReward.InfieldPosition.sum": {
+            "value": -57.553301433101296,
+            "min": -61.651294000446796,
+            "max": -57.553301433101296,
+            "count": 2
+        },
+        "BaseballBatter.Defense.Cover1B.mean": {
+            "value": 0.1641025641025641,
+            "min": 0.10582010582010581,
+            "max": 0.1641025641025641,
+            "count": 2
+        },
+        "BaseballBatter.Defense.Cover1B.sum": {
+            "value": 32.0,
+            "min": 20.0,
+            "max": 32.0,
+            "count": 2
+        },
+        "BaseballBatter.Defense.Cover2B(SS).mean": {
+            "value": 0.04639175257731959,
+            "min": 0.04639175257731959,
+            "max": 0.06417112299465241,
+            "count": 2
+        },
+        "BaseballBatter.Defense.Cover2B(SS).sum": {
+            "value": 9.0,
+            "min": 9.0,
+            "max": 12.0,
+            "count": 2
+        },
+        "BaseballBatter.Defense.Cover3B.mean": {
+            "value": 0.020618556701030927,
+            "min": 0.0,
+            "max": 0.020618556701030927,
+            "count": 2
+        },
+        "BaseballBatter.Defense.Cover3B.sum": {
+            "value": 4.0,
+            "min": 0.0,
+            "max": 4.0,
+            "count": 2
+        },
+        "BaseballBatter.PlateAppearance.Strikeout.mean": {
+            "value": 0.30196078431372547,
+            "min": 0.2629310344827586,
+            "max": 0.30196078431372547,
+            "count": 2
+        },
+        "BaseballBatter.PlateAppearance.Strikeout.sum": {
+            "value": 77.0,
+            "min": 61.0,
+            "max": 77.0,
+            "count": 2
+        },
+        "BaseballBatter.PlateAppearance.Walk.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.PlateAppearance.Walk.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.PlateAppearance.InPlay.mean": {
+            "value": 0.6980392156862745,
+            "min": 0.6980392156862745,
+            "max": 0.7370689655172413,
+            "count": 2
+        },
+        "BaseballBatter.PlateAppearance.InPlay.sum": {
+            "value": 178.0,
+            "min": 171.0,
+            "max": 178.0,
+            "count": 2
+        },
+        "BaseballBatter.PlateAppearance.Pitches.mean": {
+            "value": 2.552941176470588,
+            "min": 2.5301724137931036,
+            "max": 2.552941176470588,
+            "count": 2
+        },
+        "BaseballBatter.PlateAppearance.Pitches.sum": {
+            "value": 651.0,
+            "min": 587.0,
+            "max": 651.0,
+            "count": 2
+        },
+        "BaseballBatter.BatterReward.Outcome.mean": {
+            "value": 0.6980392156862745,
+            "min": 0.6980392156862745,
+            "max": 0.7887931034482759,
+            "count": 2
+        },
+        "BaseballBatter.BatterReward.Outcome.sum": {
+            "value": 178.0,
+            "min": 178.0,
+            "max": 183.0,
+            "count": 2
+        },
+        "BaseballBatter.PlateAppearance.OnBase.mean": {
+            "value": 0.6941176470588235,
+            "min": 0.6941176470588235,
+            "max": 0.728448275862069,
+            "count": 2
+        },
+        "BaseballBatter.PlateAppearance.OnBase.sum": {
+            "value": 177.0,
+            "min": 169.0,
+            "max": 177.0,
+            "count": 2
+        },
+        "BaseballBatter.Play.Outs.mean": {
+            "value": 0.0056179775280898875,
+            "min": 0.0056179775280898875,
+            "max": 0.011695906432748537,
+            "count": 2
+        },
+        "BaseballBatter.Play.Outs.sum": {
+            "value": 1.0,
+            "min": 1.0,
+            "max": 2.0,
+            "count": 2
+        },
+        "BaseballBatter.Play.Runs.mean": {
+            "value": 0.8820224719101124,
+            "min": 0.8820224719101124,
+            "max": 0.8888888888888888,
+            "count": 2
+        },
+        "BaseballBatter.Play.Runs.sum": {
+            "value": 157.0,
+            "min": 152.0,
+            "max": 157.0,
+            "count": 2
+        },
+        "BaseballBatter.Play.BatterBases.mean": {
+            "value": 1.9887640449438202,
+            "min": 1.976608187134503,
+            "max": 1.9887640449438202,
+            "count": 2
+        },
+        "BaseballBatter.Play.BatterBases.sum": {
+            "value": 354.0,
+            "min": 338.0,
+            "max": 354.0,
+            "count": 2
+        },
+        "BaseballBatter.Play.RunnerOuts.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.011695906432748537,
+            "count": 2
+        },
+        "BaseballBatter.Play.RunnerOuts.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 2.0,
+            "count": 2
+        },
+        "BaseballBatter.Play.BasesAdvanced.mean": {
+            "value": 3.9101123595505616,
+            "min": 3.9101123595505616,
+            "max": 4.011695906432749,
+            "count": 2
+        },
+        "BaseballBatter.Play.BasesAdvanced.sum": {
+            "value": 696.0,
+            "min": 686.0,
+            "max": 696.0,
+            "count": 2
+        },
+        "BaseballBatter.Play.LiveTime(s).mean": {
+            "value": 11.496399943748218,
+            "min": 11.409001384562218,
+            "max": 11.496399943748218,
+            "count": 2
+        },
+        "BaseballBatter.Play.LiveTime(s).sum": {
+            "value": 2046.3591899871826,
+            "min": 1950.9392367601395,
+            "max": 2046.3591899871826,
+            "count": 2
+        },
+        "BaseballBatter.PlayEnd.FlyOut.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.PlayEnd.FlyOut.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.PlayEnd.ForceOut.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.005847953216374269,
+            "count": 2
+        },
+        "BaseballBatter.PlayEnd.ForceOut.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 2
+        },
+        "BaseballBatter.PlayEnd.TagOut.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.005847953216374269,
+            "count": 2
+        },
+        "BaseballBatter.PlayEnd.TagOut.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 2
+        },
+        "BaseballBatter.PlayEnd.RunnerSafe.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.PlayEnd.RunnerSafe.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.PlayEnd.RunScored.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.PlayEnd.RunScored.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.PlayEnd.HomeRun.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.PlayEnd.HomeRun.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.PlayEnd.GroundRuleDouble.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.PlayEnd.GroundRuleDouble.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.PlayEnd.Timeout.mean": {
+            "value": 1.0,
+            "min": 0.9883040935672515,
+            "max": 1.0,
+            "count": 2
+        },
+        "BaseballBatter.PlayEnd.Timeout.sum": {
+            "value": 178.0,
+            "min": 169.0,
+            "max": 178.0,
+            "count": 2
+        },
+        "BaseballBatter.Matchup.BatterWin.mean": {
+            "value": 0.6980392156862745,
+            "min": 0.6980392156862745,
+            "max": 0.7327586206896551,
+            "count": 2
+        },
+        "BaseballBatter.Matchup.BatterWin.sum": {
+            "value": 178.0,
+            "min": 170.0,
+            "max": 178.0,
+            "count": 2
+        },
+        "BaseballBatter.Matchup.PitcherWin.mean": {
+            "value": 0.30196078431372547,
+            "min": 0.2672413793103448,
+            "max": 0.30196078431372547,
+            "count": 2
+        },
+        "BaseballBatter.Matchup.PitcherWin.sum": {
+            "value": 77.0,
+            "min": 62.0,
+            "max": 77.0,
+            "count": 2
+        },
+        "BaseballBatter.Matchup.Draw.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.Matchup.Draw.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkPitcher.ZoneRate.mean": {
+            "value": 0.8494623655913979,
+            "min": 0.8494623655913979,
+            "max": 0.8611111111111112,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkPitcher.ZoneRate.sum": {
+            "value": 79.0,
+            "min": 31.0,
+            "max": 79.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkPitcher.ZoneSwingRate.mean": {
+            "value": 0.34177215189873417,
+            "min": 0.25806451612903225,
+            "max": 0.34177215189873417,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkPitcher.ZoneSwingRate.sum": {
+            "value": 27.0,
+            "min": 8.0,
+            "max": 27.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkPitcher.ContactRate.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkPitcher.ContactRate.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkPitcher.Strikeout.mean": {
+            "value": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkPitcher.Strikeout.sum": {
+            "value": 30.0,
+            "min": 12.0,
+            "max": 30.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkPitcher.Walk.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkPitcher.Walk.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkPitcher.InPlay.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkPitcher.InPlay.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkPitcher.BatterOutcome.mean": {
+            "value": -1.0,
+            "min": -1.0,
+            "max": -1.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkPitcher.BatterOutcome.sum": {
+            "value": -30.0,
+            "min": -30.0,
+            "max": -12.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkPitcher.OnBase.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkPitcher.OnBase.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.HalfInning.Runs.mean": {
+            "value": 1.2972972972972974,
+            "min": 0.8928571428571429,
+            "max": 1.2972972972972974,
+            "count": 2
+        },
+        "BaseballBatter.HalfInning.Runs.sum": {
+            "value": 48.0,
+            "min": 25.0,
+            "max": 48.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.ExitSpeed(km.h).mean": {
+            "value": 107.6692545413971,
+            "min": 107.6692545413971,
+            "max": 107.85693316989475,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.ExitSpeed(km.h).sum": {
+            "value": 1722.7080726623535,
+            "min": 1722.7080726623535,
+            "max": 1941.4247970581055,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.HardHit.mean": {
+            "value": 0.0625,
+            "min": 0.05555555555555555,
+            "max": 0.0625,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.HardHit.sum": {
+            "value": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.HomeRun.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkBatter.HomeRun.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "count": 2
+        },
+        "BaseballBatter.PlateDiscipline.ChaseRate.mean": {
+            "value": 0.625,
+            "min": 0.42857142857142855,
+            "max": 0.625,
+            "count": 2
+        },
+        "BaseballBatter.PlateDiscipline.ChaseRate.sum": {
+            "value": 5.0,
+            "min": 3.0,
+            "max": 5.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkPitcher.ChaseRate.mean": {
+            "value": 0.7857142857142857,
+            "min": 0.7857142857142857,
+            "max": 1.0,
+            "count": 2
+        },
+        "BaseballBatter.BenchmarkPitcher.ChaseRate.sum": {
+            "value": 11.0,
+            "min": 5.0,
+            "max": 11.0,
+            "count": 2
+        },
+        "BaseballBatter.Losses.PolicyLoss.mean": {
+            "value": 0.0472944120663063,
+            "min": 0.046461948950309306,
+            "max": 0.0472944120663063,
+            "count": 2
+        },
+        "BaseballBatter.Losses.PolicyLoss.sum": {
+            "value": 0.0945888241326126,
+            "min": 0.046461948950309306,
+            "max": 0.0945888241326126,
+            "count": 2
+        },
+        "BaseballBatter.Losses.ValueLoss.mean": {
+            "value": 0.5134245877464612,
+            "min": 0.5134245877464612,
+            "max": 0.544343505303065,
+            "count": 2
+        },
+        "BaseballBatter.Losses.ValueLoss.sum": {
+            "value": 1.0268491754929223,
+            "min": 0.544343505303065,
+            "max": 1.0268491754929223,
+            "count": 2
+        },
+        "BaseballBatter.Policy.LearningRate.mean": {
+            "value": 0.00020000000000000006,
+            "min": 0.00020000000000000006,
+            "max": 0.00020000000000000006,
+            "count": 2
+        },
+        "BaseballBatter.Policy.LearningRate.sum": {
+            "value": 0.00040000000000000013,
+            "min": 0.00020000000000000006,
+            "max": 0.00040000000000000013,
+            "count": 2
+        },
+        "BaseballBatter.Policy.Epsilon.mean": {
+            "value": 0.20000000000000004,
+            "min": 0.20000000000000004,
+            "max": 0.20000000000000004,
+            "count": 2
+        },
+        "BaseballBatter.Policy.Epsilon.sum": {
+            "value": 0.4000000000000001,
+            "min": 0.20000000000000004,
+            "max": 0.4000000000000001,
+            "count": 2
+        },
+        "BaseballBatter.Policy.Beta.mean": {
+            "value": 0.02,
+            "min": 0.02,
+            "max": 0.02,
+            "count": 2
+        },
+        "BaseballBatter.Policy.Beta.sum": {
+            "value": 0.04,
+            "min": 0.02,
+            "max": 0.04,
+            "count": 2
+        },
+        "BaseballBatter.IsTraining.mean": {
+            "value": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "count": 2
+        },
+        "BaseballBatter.IsTraining.sum": {
+            "value": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "count": 2
+        },
+        "BaseballRunner.BenchmarkPitcher.ExitSpeed(km.h).mean": {
+            "value": 159.52462768554688,
+            "min": 159.52462768554688,
+            "max": 159.52462768554688,
+            "count": 1
+        },
+        "BaseballRunner.BenchmarkPitcher.ExitSpeed(km.h).sum": {
+            "value": 159.52462768554688,
+            "min": 159.52462768554688,
+            "max": 159.52462768554688,
+            "count": 1
+        },
+        "BaseballRunner.BenchmarkPitcher.HardHit.mean": {
+            "value": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "count": 1
+        },
+        "BaseballRunner.BenchmarkPitcher.HardHit.sum": {
+            "value": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "count": 1
+        },
+        "BaseballRunner.BenchmarkPitcher.HomeRun.mean": {
+            "value": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "count": 1
+        },
+        "BaseballRunner.BenchmarkPitcher.HomeRun.sum": {
+            "value": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "count": 1
+        },
+        "BaseballFielder.BenchmarkPitcher.ExitSpeed(km.h).mean": {
+            "value": 94.20997619628906,
+            "min": 94.20997619628906,
+            "max": 159.52462768554688,
+            "count": 2
+        },
+        "BaseballFielder.BenchmarkPitcher.ExitSpeed(km.h).sum": {
+            "value": 94.20997619628906,
+            "min": 94.20997619628906,
+            "max": 159.52462768554688,
+            "count": 2
+        },
+        "BaseballFielder.BenchmarkPitcher.HardHit.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 2
+        },
+        "BaseballFielder.BenchmarkPitcher.HardHit.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 2
+        },
+        "BaseballFielder.BenchmarkPitcher.HomeRun.mean": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 2
+        },
+        "BaseballFielder.BenchmarkPitcher.HomeRun.sum": {
+            "value": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 2
+        }
+    },
+    "metadata": {
+        "timer_format_version": "0.1.0",
+        "start_time_seconds": "1790865549",
+        "python_version": "3.10.12 | packaged by Anaconda, Inc. | (main, Jul  5 2023, 19:01:18) [MSC v.1916 64 bit (AMD64)]",
+        "command_line_arguments": "C:\\miniconda3\\envs\\mlagents\\Scripts\\mlagents-learn Training/config/stage3_full_team_resume.yaml --run-id=stage3_full_team --results-dir=Training/results --resume",
+        "mlagents_version": "1.1.0",
+        "mlagents_envs_version": "1.1.0",
+        "communication_protocol_version": "1.5.0",
+        "pytorch_version": "2.7.1+cu128",
+        "numpy_version": "1.23.5",
+        "end_time_seconds": "1790866012"
+    },
+    "total": 462.68160709994845,
+    "count": 1,
+    "self": 0.007187800016254187,
+    "children": {
+        "run_training.setup": {
+            "total": 0.05349810002371669,
+            "count": 1,
+            "self": 0.05349810002371669
+        },
+        "TrainerController.start_learning": {
+            "total": 462.6209211999085,
+            "count": 1,
+            "self": 0.6196706258924678,
+            "children": {
+                "TrainerController._reset_env": {
+                    "total": 7.109340899973176,
+                    "count": 1,
+                    "self": 7.109340899973176
+                },
+                "TrainerController.advance": {
+                    "total": 454.6873888740083,
+                    "count": 63703,
+                    "self": 0.8638445701217279,
+                    "children": {
+                        "env_step": {
+                            "total": 308.4965115035884,
+                            "count": 63703,
+                            "self": 148.90882710646838,
+                            "children": {
+                                "SubprocessEnvManager._take_step": {
+                                    "total": 159.22634361917153,
+                                    "count": 63703,
+                                    "self": 3.470827440964058,
+                                    "children": {
+                                        "TorchPolicy.evaluate": {
+                                            "total": 155.75551617820747,
+                                            "count": 122906,
+                                            "self": 155.75551617820747
+                                        }
+                                    }
+                                },
+                                "workers": {
+                                    "total": 0.3613407779484987,
+                                    "count": 63703,
+                                    "self": 0.0,
+                                    "children": {
+                                        "worker_root": {
+                                            "total": 454.66962080379017,
+                                            "count": 63703,
+                                            "is_parallel": true,
+                                            "self": 346.68871120747644,
+                                            "children": {
+                                                "steps_from_proto": {
+                                                    "total": 0.00031969998963177204,
+                                                    "count": 1,
+                                                    "is_parallel": true,
+                                                    "self": 0.00012119999155402184,
+                                                    "children": {
+                                                        "_process_rank_one_or_two_observation": {
+                                                            "total": 0.0001984999980777502,
+                                                            "count": 4,
+                                                            "is_parallel": true,
+                                                            "self": 0.0001984999980777502
+                                                        }
+                                                    }
+                                                },
+                                                "UnityEnvironment.step": {
+                                                    "total": 107.98058989632409,
+                                                    "count": 63703,
+                                                    "is_parallel": true,
+                                                    "self": 4.767094406415708,
+                                                    "children": {
+                                                        "UnityEnvironment._generate_step_input": {
+                                                            "total": 3.6472098131198436,
+                                                            "count": 63703,
+                                                            "is_parallel": true,
+                                                            "self": 3.6472098131198436
+                                                        },
+                                                        "communicator.exchange": {
+                                                            "total": 86.0676414052723,
+                                                            "count": 63703,
+                                                            "is_parallel": true,
+                                                            "self": 86.0676414052723
+                                                        },
+                                                        "steps_from_proto": {
+                                                            "total": 13.498644271516241,
+                                                            "count": 254694,
+                                                            "is_parallel": true,
+                                                            "self": 7.510357245802879,
+                                                            "children": {
+                                                                "_process_rank_one_or_two_observation": {
+                                                                    "total": 5.988287025713362,
+                                                                    "count": 636794,
+                                                                    "is_parallel": true,
+                                                                    "self": 5.988287025713362
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trainer_advance": {
+                            "total": 145.32703280029818,
+                            "count": 254693,
+                            "self": 1.4802921719383448,
+                            "children": {
+                                "process_trajectory": {
+                                    "total": 53.28277172835078,
+                                    "count": 254693,
+                                    "self": 53.1833822283661,
+                                    "children": {
+                                        "RLTrainer._checkpoint": {
+                                            "total": 0.0993894999846816,
+                                            "count": 2,
+                                            "self": 0.0993894999846816
+                                        }
+                                    }
+                                },
+                                "_update_policy": {
+                                    "total": 90.56396890000906,
+                                    "count": 88,
+                                    "self": 22.336405001347885,
+                                    "children": {
+                                        "TorchPOCAOptimizer.update": {
+                                            "total": 65.24429159937426,
+                                            "count": 5034,
+                                            "self": 65.24429159937426
+                                        },
+                                        "TorchPPOOptimizer.update": {
+                                            "total": 2.9832722992869094,
+                                            "count": 528,
+                                            "self": 2.9832722992869094
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "trainer_threads": {
+                    "total": 5.00003807246685e-07,
+                    "count": 1,
+                    "self": 5.00003807246685e-07
+                },
+                "TrainerController._save_models": {
+                    "total": 0.2045203000307083,
+                    "count": 1,
+                    "self": 0.036590899922885,
+                    "children": {
+                        "RLTrainer._checkpoint": {
+                            "total": 0.1679294001078233,
+                            "count": 4,
+                            "self": 0.1679294001078233
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

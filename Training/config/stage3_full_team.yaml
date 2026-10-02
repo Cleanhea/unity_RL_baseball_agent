@@ -1,7 +1,7 @@
-# Stage 3: offense (batter + runners, team 0) and defense (pitcher + 5 fielders, team 1) trained at the same time.
+# Stage 3: offense (batter + runners, team 0) and defense (pitcher + 9 fielders, team 1) trained at the same time.
 # Scene: Assets/BaseballSimulation/Scenes/Training/Stage3_FullTeam.unity
 # Batter and pitcher start from the stage 2 checkpoints (observations, actions and network size must match stage 2).
-# The 5 fielders (BaseballFielder) and 4 runners (BaseballRunner: batter-runner + runners starting on 1B/2B/3B)
+# The 9 fielders (BaseballFielder) and 4 runners (BaseballRunner: batter-runner + runners starting on 1B/2B/3B)
 # are each a SimpleMultiAgentGroup with a team reward, so they use MA-POCA.
 # Batter/pitcher episode = one plate appearance. Fielder/runner group episode = one ball in play.
 # Fielders and runners decide every 5 fixed steps (0.1 s) while the batted ball is live.
@@ -15,7 +15,7 @@ behaviors:
       batch_size: 256
       buffer_size: 10240
       learning_rate: 2.0e-4
-      beta: 5.0e-3
+      beta: 2.0e-2  # raised from 5e-3: batter collapsed to taking (swing rate ~7%)
       epsilon: 0.2
       lambd: 0.95
       num_epoch: 3
@@ -83,13 +83,13 @@ behaviors:
     time_horizon: 64
     summary_freq: 10000
   BaseballFielder:
-    trainer_type: poca
+    trainer_type: baseball_fielder_poca  # registered direction-preserving POCA extension
     hyperparameters:
       # Collect fewer live-ball decisions before the first update; contact can be rare early on.
       batch_size: 256
       buffer_size: 4096
       learning_rate: 3.0e-4
-      beta: 5.0e-3
+      beta: 5.0e-3  # 1e-3 collapsed fielder entropy (2.0 -> 0.19) into a near-still policy (2026-10-02)
       epsilon: 0.2
       lambd: 0.95
       num_epoch: 3

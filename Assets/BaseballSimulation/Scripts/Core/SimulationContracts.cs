@@ -134,14 +134,21 @@ namespace BaseballSimulation
         RunnerSafe = 11,
     }
 
-    /// <summary>3단계 수비수 5명의 역할. 포수와 2루수는 없다.</summary>
+    /// <summary>
+    /// 3단계 수비수 9명의 역할(실제 야구 수비 번호 순서). 값은 수비수 Agent 관측의 역할 원-핫 위치다.
+    /// 투수 역할은 투구가 아니라 타구 뒤 수비만 맡는다(투구는 PitcherAgent).
+    /// </summary>
     public enum FielderRole
     {
-        FirstBase = 0,
-        Shortstop = 1,
-        ThirdBase = 2,
-        LeftCenter = 3,
-        RightCenter = 4,
+        Pitcher = 0,
+        Catcher = 1,
+        FirstBase = 2,
+        SecondBase = 3,
+        ThirdBase = 4,
+        Shortstop = 5,
+        LeftField = 6,
+        CenterField = 7,
+        RightField = 8,
     }
 
     /// <summary>수비수의 송구 목표. None은 송구하지 않는다.</summary>

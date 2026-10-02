@@ -16,9 +16,9 @@
 | --- | --- | --- | --- |
 | 1 타자 | `Scenes/Training/Stage1_Batter.unity` | 타자 `BaseballBatter` | 스크립트 투수가 항상 존 중앙으로 직구를 던진다. 구속만 바뀐다 |
 | 2 타자+투수 | `Scenes/Training/Stage2_BatterPitcher.unity` | 타자, 투수 `BaseballPitcher` | 투수 Agent가 구종·구속·위치를 고른다 |
-| 3 전체 | `Scenes/Training/Stage3_FullTeam.unity` | 타자, 주자 4명 `BaseballRunner`(타자주자 + 1·2·3루), 투수, 수비 5명 `BaseballFielder` | 투수 Agent |
+| 3 전체 | `Scenes/Training/Stage3_FullTeam.unity` | 타자, 주자 4명 `BaseballRunner`(타자주자 + 1·2·3루), 투수, 수비 9명 `BaseballFielder` | 투수 Agent |
 
-3단계 수비는 1루수·유격수·3루수·좌중간·우중간 외야수 5명이다. 포수와 2루수는 없다. 구종은 포심·투심·커브·슬라이더·체인지업이다.
+3단계 수비는 투수·포수·1루수·2루수·3루수·유격수·좌익수·중견수·우익수 9명이다(2026-10-02 5명에서 확장). 투수·포수 수비수는 타구 수비만 한다. 구종은 포심·투심·커브·슬라이더·체인지업이다.
 
 ## 공통 구조
 
@@ -46,7 +46,7 @@
 | `Ready`, 타자 자세 전 | 타자 1회 (자세·손잡이) |
 | `Ready`, 자세 후 | 1단계: 컨트롤러가 스크립트 투구를 요청. 2·3단계: 투수 1회 |
 | `PitchInFlight` | 타자, 스윙할 때까지 매 고정 단계 |
-| `BattedBallInFlight` (3단계) | 수비 5명과 살아 있는 주자 |
+| `BattedBallInFlight` (3단계) | 수비 9명과 살아 있는 주자 |
 
 **플레이 종료와 초기화.**
 
@@ -79,14 +79,14 @@
 - **학습 설정:** `Training/config/stage2_batter_pitcher.yaml`. 타자(팀 0)와 투수(팀 1)를 동시에 학습한다. 현재 YAML의 `self_play` 예시는 주석이므로 적용되지 않는다. 타자는 1단계 체크포인트(`init_path`)에서 시작한다.
 - **실행:** 1단계 학습 결과가 `Training/results/stage1_batter`에 있어야 한다. `mlagents-learn Training/config/stage2_batter_pitcher.yaml --run-id=stage2_batter_pitcher --results-dir=Training/results` 후 `Stage2_BatterPitcher` 씬을 Play한다.
 
-## 3단계 — 타자·주자 + 투수 + 수비 5명
+## 3단계 — 타자·주자 + 투수 + 수비 9명
 
 - **씬:** 2단계 구성에 두 가지를 더한다.
-  - 수비수 5명 `Actors/Fielder_1B|SS|3B|LCF|RCF`(`FielderController` + `FielderAgent`, 팀 1). `PlayDirector` 수비수 목록에도 같은 순서로 연결한다.
+  - 수비수 9명 `Actors/Fielder_P|C|1B|2B|3B|SS|LF|CF|RF`(`FielderController` + `FielderAgent`, 팀 1). `PlayDirector` 수비수 목록에도 같은 순서(`FielderRole` 값 순서)로 연결한다. 투수 몸의 모양 부품은 `Fielder_P`로 옮겨 타구 뒤 수비수로 움직인다.
   - 누상 주자 3명 `Actors/BaseRunner_1B|2B|3B`(`RunnerController`). `PlayDirector` 누상 주자 슬롯에 연결한다.
   - 주자 4명(타자주자 + 누상 주자)의 `RunnerAgent`(팀 0).
-- **시작 위치:** 1B (16, 23), SS (-8, 33), 3B (-17, 22.5), LCF (-24, 70), RCF (24, 70) m. 2루수가 없어 유격수가 가운데로 치우친다.
-- **흐름:** 투구·타격은 2단계와 같다. 타구가 나오면 수비 5명과 살아 있는 주자가 0.1 s마다 결정한다. `PlayDirector`는 다음을 판정해 플레이를 끝낸다.
+- **시작 위치:** P 투수 몸 자리 (0.35, 18.69), C (0, -1.6), 1B (16, 23), 2B (9, 35), 3B (-17, 22.5), SS (-9, 35), LF (-36, 66), CF (0, 80), RF (36, 66) m.
+- **흐름:** 투구·타격은 2단계와 같다. 타구가 나오면 수비 9명과 살아 있는 주자가 0.1 s마다 결정한다. `PlayDirector`는 다음을 판정해 플레이를 끝낸다.
   - 포구·송구
   - 포스·태그·리터치 아웃과 세이프
   - 득점, 3아웃
@@ -95,7 +95,7 @@
 - **무작위 상황:** 새 타석의 30%(`randomSituationProbability`)는 누상 주자·아웃을 무작위로 정해 다양한 상황을 겪게 한다.
 - **학습 설정:** `Training/config/stage3_full_team.yaml`
   - 타자·투수: PPO, 2단계 체크포인트에서 시작
-  - 주자 그룹·수비 그룹: MA-POCA(`poca`)
+  - 주자 그룹: MA-POCA(`poca`), 수비 그룹: MA-POCA 수비 확장(`baseball_fielder_poca`, 등록 방법은 [학습 안내](../Training/README.md#3단계-수비-보조-보상-2026-10-01))
   - 모든 behavior를 동시에 학습한다
 - **실행:** `mlagents-learn Training/config/stage3_full_team.yaml --run-id=stage3_full_team --results-dir=Training/results` 후 `Stage3_FullTeam` 씬을 Play한다.
 
@@ -134,8 +134,11 @@
 | `Play End/Fly Out`·`Force Out`·`Tag Out`·`Runner Safe`·`Run Scored`·`Home Run`·`Ground Rule Double`·`Timeout` | 판정까지 끝난 인플레이 | 3 | 플레이 종료 원인 비율 |
 | `Half Inning/Runs` | 3아웃마다 | 3 | 반 이닝 득점. 무작위 상황으로 시작한 반 이닝은 상황을 정한 뒤의 득점이다 |
 | `Defense/Fielded` | 수비가 결정한 플레이마다(파울·평가 타석 포함) | 3 | 수비가 타구를 한 번이라도 잡은 비율. 수비 학습이 시작됐는지 가장 먼저 보는 값이다 |
-| `Defense Reward/Outcome`·`Shaping` | 수비가 결정한 플레이마다(파울·평가 타석 포함) | 3 | 수비 그룹의 결과 보상과 [보조 보상](fielding-agents.md#수비-보조-보상-2026-10-01) 합. `Environment/Group Cumulative Reward`에는 둘과 시간 감점이 모두 들어 있다. 보조 보상 합은 할인하지 않은 값이라 공·베이스에서 먼 상태가 길수록 오히려 커질 수 있다(검증: 제자리 수비 +1.01). 실력 지표로 쓰지 말고 수비 실력은 `Outcome`·`Fielded`·`Play/*`로 본다 |
-| `Defense/Cover 1B`·`Cover 2B (SS)`·`Cover 3B` | 그 베이스로 진루·귀루 중인 주자가 있었던 수비 플레이마다 | 3 | 맡은 내야수(1루수·유격수·3루수)가 그 동안 베이스 반경 0.6 m 안에 들어간 비율. [내야 역할 보조 보상](fielding-agents.md#내야-역할-보조-보상-2026-10-01)이 통하는지 보는 값이다. 1루수는 거의 모든 땅볼에서 기록된다 |
+| `Defense Reward/Outcome`·`Shaping` | 수비가 결정한 플레이마다(파울·평가 타석 포함) | 3 | 수비 그룹의 결과 보상과 포구·포스 커버 [보조 보상](fielding-agents.md#수비-보조-보상-2026-10-01) 합. 쫓기는 개인 보상으로 분리했다. `Environment/Group Cumulative Reward`에는 둘과 시간 감점이 모두 들어 있다. 보조 보상 합은 할인하지 않은 값이라 공·베이스에서 먼 상태가 길수록 오히려 커질 수 있다(이전 그룹 쫓기 검증: 제자리 수비 +1.01). 실력 지표로 쓰지 말고 수비 실력은 `Outcome`·`Fielded`·`Play/*`로 본다 |
+| `Defense Reward/Chase Shaping` | 수비가 결정한 플레이마다 | 3 | 수비수에게 지급한 개인 쫓기 보상의 플레이 합. 그룹 보상에는 포함하지 않는다. 할인 없는 합이므로 실력 지표로 쓰지 않는다 |
+| `Defense Reward/Position` | 수비가 결정한 플레이마다 | 3 | 아홉 수비수의 [역할 임무](fielding-agents.md#수비-9명역할-임무-보상-개편-2026-10-02) 지점(베이스 3 m, 투수·키스톤 구역 6 m, 외야 구역 12 m) 바깥 개인 감점 합. 공 처리 역할은 제외하며 수비수당 초당 최대 −0.1이다. 종료 정산으로 취소하지 않는다. 2026-10-02 이전 `Defense Reward/Infield Position`을 대신한다 |
+| `Defense Reward/Fielding` | 수비가 결정한 플레이마다 | 3 | 처음 공을 잡은 수비수에게 준 개인 포구 보상(0 또는 0.3). 평균은 `Defense/Fielded` × 0.3이다 |
+| `Defense/Cover 1B`·`Cover 2B`·`Cover 3B`·`Cover Home` | 그 베이스로 진루·귀루 중인 주자가 있었던 수비 플레이마다 | 3 | 그 동안 어느 수비수든 베이스 반경 0.6 m 안에 들어간 비율. 2026-10-02부터 역할이 아니라 베이스 기준이다(이전 `Cover 2B (SS)`). 1루는 거의 모든 땅볼에서 기록된다 |
 | `Env/Aborted Play` | 초기화한 투구마다 | 전체 | 투구 거부·시간 초과로 중단한 비율. 0이 정상이다 |
 | `Matchup/Batter Win`·`Pitcher Win`·`Draw` | Agent끼리 대결한 타석마다 | 2·3 | 타석 결과 보상(`Batter Reward/Outcome`)의 부호로 본 승패 비율. 셋의 합은 1이다 |
 | `Benchmark Batter/…`·`Benchmark Pitcher/…` | 고정 상대 평가 타석 | 2·3 | [고정 상대 평가](#고정-상대-평가-2026-09-27) 참고 |
