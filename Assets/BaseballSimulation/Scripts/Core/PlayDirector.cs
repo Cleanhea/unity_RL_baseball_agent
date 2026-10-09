@@ -172,10 +172,13 @@ namespace BaseballSimulation
 
         [Tooltip("3단계 수비수. 비어 있으면 수비 없이 기존처럼 타구만 관찰한다.")]
         [SerializeField] private FielderController[] fielders = new FielderController[0];
+        [Tooltip("3단계 단순 수비: 중견수만 이동·1/2/3루 직접 송구, 나머지는 고정 수신자.")]
+        [SerializeField] private bool simplifiedFielding;
         private Vector2[] pendingFielderMoves = new Vector2[0];
         private ThrowTarget[] pendingThrows = new ThrowTarget[0];
         private bool battedBallFielded;
         private int lastThrower = -1;
+        private ThrowTarget lastThrowTarget;
         private float lastThrowTime = -1f;
         private bool scriptedBattedBallRequested;
         private Vector3 pendingScriptedExitVelocity;
@@ -187,6 +190,13 @@ namespace BaseballSimulation
 
         private bool HasFielders => fielders != null && fielders.Length > 0;
         public int FielderCount => fielders != null ? fielders.Length : 0;
+        public bool SimplifiedFielding => simplifiedFielding;
+        public void SetSimplifiedFielding(bool value) => simplifiedFielding = value;
+        public int FindFielder(FielderRole role)
+        {
+            for (int i = 0; i < FielderCount; i++) if (fielders[i].Role == role) return i;
+            return -1;
+        }
         public FielderController GetFielder(int index) => fielders[index];
         /// <summary>공을 잡고 있는 수비수 인덱스. 없으면 -1이다.</summary>
         public int BallHolder => ball != null ? ball.HolderIndex : -1;
@@ -194,8 +204,10 @@ namespace BaseballSimulation
         public bool BattedBallFielded => battedBallFielded;
         /// <summary>이번 플레이에서 마지막으로 송구한 수비수 인덱스. 송구가 없었으면 -1이다.</summary>
         public int LastThrower => lastThrower;
+        public ThrowTarget LastThrowTarget => lastThrowTarget;
         /// <summary>그 수비수가 지금 송구할 수 있는지: 타구가 살아 있고 그 수비수가 공을 쥐었다.</summary>
-        public bool CanThrow(int index) => state == PlayState.BattedBallInFlight && index >= 0 && BallHolder == index;
+        public bool CanThrow(int index) => state == PlayState.BattedBallInFlight && index >= 0 && index < FielderCount &&
+            BallHolder == index && (!simplifiedFielding || fielders[index].Role == FielderRole.CenterField);
         /// <summary>수비수가 공을 잡을 때 발생한다. (수비수 인덱스, 타구가 땅·펜스에 닿기 전에 잡았는지)</summary>
         public event System.Action<int, bool> BallFielded;
 
@@ -208,6 +220,11 @@ namespace BaseballSimulation
         public void RequestFielderMove(int index, Vector2 direction)
         {
             if (index < 0 || index >= pendingFielderMoves.Length) return;
+            if (fielders[index].MovementLocked || (simplifiedFielding && (fielders[index].Role != FielderRole.CenterField || battedBallFielded)))
+            {
+                pendingFielderMoves[index] = Vector2.zero;
+                return;
+            }
             pendingFielderMoves[index] = direction;
         }
 
@@ -215,6 +232,7 @@ namespace BaseballSimulation
         public void RequestFielderThrow(int index, ThrowTarget target)
         {
             if (index < 0 || index >= pendingThrows.Length) return;
+            if (simplifiedFielding && (!CanThrow(index) || (int)target < (int)ThrowTarget.First || (int)target > (int)ThrowTarget.Third)) return;
             pendingThrows[index] = target;
         }
 
@@ -521,7 +539,8 @@ namespace BaseballSimulation
 
             if (HasFielders)
             {
-                for (int i = 0; i < fielders.Length; i++) fielders[i].SetMoveCommand(pendingFielderMoves[i]);
+                for (int i = 0; i < fielders.Length; i++)
+                    fielders[i].SetMoveCommand(simplifiedFielding && battedBallFielded ? Vector2.zero : pendingFielderMoves[i]);
                 if (state == PlayState.BattedBallInFlight && ball.IsHeld && pendingThrows[ball.HolderIndex] != ThrowTarget.None)
                     PerformFielderThrow(ball.HolderIndex, pendingThrows[ball.HolderIndex]);
                 System.Array.Clear(pendingThrows, 0, pendingThrows.Length);
@@ -756,6 +775,7 @@ namespace BaseballSimulation
                 bool firstTouch = !battedBallFielded;
                 bool caughtInAir = firstTouch && !ball.HasFirstTouch;
                 battedBallFielded = true;
+                if (simplifiedFielding) foreach (FielderController fielder in fielders) fielder.StopMoving();
                 ball.Hold(catcher, fielders[catcher].GlovePosition);
                 BallFielded?.Invoke(catcher, caughtInAir);
                 if (caughtInAir && CatchFlyBall()) return true;
@@ -780,6 +800,12 @@ namespace BaseballSimulation
             }
             FielderController holder = fielders[ball.HolderIndex];
             ball.MoveHeld(holder.GlovePosition);
+            // 중견수의 포구 다음 고정 단계에 새 송구 결정을 받는다. 그 사이 직접 태그·베이스 커버로 끝내지 않는다.
+            if (simplifiedFielding && holder.Role == FielderRole.CenterField)
+            {
+                deadBallTimer = 0f;
+                return false;
+            }
             if (runner == null) return false;
 
             // 공을 가진 수비수 기준 아웃: 포스(밀려나는 베이스를 먼저 밟음), 태그(베이스를 벗어난 주자), 리터치 전 원래 베이스 태그.
@@ -868,6 +894,9 @@ namespace BaseballSimulation
             Vector2 ab = b - a;
             for (int i = 0; i < fielders.Length; i++)
             {
+                if (simplifiedFielding && lastThrower >= 0 &&
+                    fielders[i].Role != (lastThrowTarget == ThrowTarget.First ? FielderRole.FirstBase :
+                        lastThrowTarget == ThrowTarget.Second ? FielderRole.SecondBase : FielderRole.ThirdBase)) continue;
                 if (i == lastThrower && elapsedSeconds - lastThrowTime < ThrowerRecatchDelay) continue;
                 if (!battedBallFielded && fielders[i].Role == FielderRole.Catcher &&
                     elapsedSeconds - battedBallStartTime < CatcherFoulTipSeconds) continue;
@@ -892,22 +921,33 @@ namespace BaseballSimulation
             Vector3 glove = fielders[index].GlovePosition;
             Vector3 aim = fieldLayout.GetBasePosition(ToBase(target)) + Vector3.up * FielderController.GloveHeight;
             Vector3 flat = Flat(aim - glove);
-            if (flat.magnitude < config.BaseCoverRadius + 1f)
+            if (!simplifiedFielding && flat.magnitude < config.BaseCoverRadius + 1f)
             {
                 lastRejectionReason = "이미 목표 베이스 가까이 있어 송구하지 않는다.";
                 return;
             }
             // 던진 수비수 몸 앞에서 출발해 바로 다시 잡지 않게 한다.
-            Vector3 from = glove + flat.normalized * (config.CatchRadius + 0.1f);
+            Vector3 from = glove + flat.normalized * Mathf.Min(config.CatchRadius + 0.1f, flat.magnitude * 0.5f);
             var throwProfile = new PitchTypeProfile(PitchType.FourSeam, new Vector2(1f, 200f), 0f, 0f, 0f);
-            if (!PitchPhysics.TrySolve(from, aim, config.ThrowSpeed, throwProfile, config, ball.AngularDamping, Time.fixedDeltaTime,
-                    out Vector3 velocity, out _, out _, out string reason))
+            float throwSpeed = config.ThrowSpeed;
+            bool solved = PitchPhysics.TrySolve(from, aim, throwSpeed, throwProfile, config, ball.AngularDamping, Time.fixedDeltaTime,
+                out Vector3 velocity, out _, out _, out string reason);
+            // 단순 수비는 목적지만 학습한다. 먼 외야에서 기본 구속으로 닿지 않아 보유 상태에 갇히지 않도록
+            // 같은 물리 해석기로 필요한 구속을 환경이 보충한다. 정상적으로 닿는 송구는 기본 구속 그대로다.
+            for (int attempt = 0; simplifiedFielding && !solved && attempt < 5; attempt++)
+            {
+                throwSpeed *= 1.25f;
+                solved = PitchPhysics.TrySolve(from, aim, throwSpeed, throwProfile, config, ball.AngularDamping, Time.fixedDeltaTime,
+                    out velocity, out _, out _, out reason);
+            }
+            if (!solved)
             {
                 lastRejectionReason = "송구 거부: " + reason;
                 return;
             }
             ball.Throw(from, velocity);
             lastThrower = index;
+            lastThrowTarget = target;
             lastThrowTime = elapsedSeconds;
             previousBallPosition = from;
             lastRejectionReason = string.Empty;
@@ -1044,7 +1084,8 @@ namespace BaseballSimulation
                     : swingOffered ? PitchCall.SwingingStrike
                     : pitchInZone ? PitchCall.CalledStrike : PitchCall.Ball);
             }
-            if (liveBattedPlay && !playResolved) ResolvePlay(reason);
+            // A time limit is an unresolved play, not proof that runners safely earned bases.
+            if (liveBattedPlay && !playResolved && reason != PitchEndReason.Timeout) ResolvePlay(reason);
         }
 
         /// <summary>투구 판정을 확정하고 볼카운트에 반영한 뒤 알린다(처리기는 갱신된 카운트를 읽는다).</summary>
@@ -1126,6 +1167,7 @@ namespace BaseballSimulation
             scriptedBattedBall = false;
             scriptedBattedBallRequested = false;
             lastThrower = -1;
+            lastThrowTarget = ThrowTarget.None;
             lastThrowTime = -1f;
             if (HasFielders)
             {

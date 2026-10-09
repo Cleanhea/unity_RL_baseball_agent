@@ -16,6 +16,59 @@ namespace BaseballSimulation
         FrozenBatter,
     }
 
+    /// <summary>Opt-in bootstrap: timing, then height, angles, and position. Phase 9 matches preparation phase 0.</summary>
+    public static class BatterSkills
+    {
+        public const int PhaseCount = 10;
+        public static float HeightScale(int phase) => phase <= 0 ? 0f : phase == 1 ? 0.25f : phase == 2 ? 0.5f : 1f;
+        public static float AngleScale(int phase) => phase < 4 ? 0f : phase == 4 ? 0.25f : phase == 5 ? 0.5f : 1f;
+        public static float PositionScale(int phase) => phase < 7 ? 0f : phase == 7 ? 0.25f : phase == 8 ? 0.5f : 1f;
+        public static Vector2 LocationSpread(int phase) => new Vector2(0.07f * PositionScale(phase), 0.08f * HeightScale(phase));
+        public static float GripHeight(float action, float limit, float centerHeight, int phase)
+        {
+            float height = HeightScale(phase);
+            float center = Mathf.Clamp(centerHeight, -limit, limit);
+            // Start at the physically verified centered lesson-1 pose. Move its
+            // neutral height gradually to the existing preparation anchor.
+            return BatterPreparation.GripHeight(action * height, limit, centerHeight, 0.5f) +
+                (1f - height) * 0.5f * center;
+        }
+    }
+
+    /// <summary>Saved lesson-2 compatible preparation controls and script-pitch sampling.</summary>
+    public static class BatterPreparation
+    {
+        public const int PhaseCount = 16;
+        public static float SwingGate(int phase) => phase < 6 ? Mathf.Max(0f, 0.30f - 0.05f * phase) : 0f;
+        public static float ControlScale(int phase) => phase <= 6 ? 0.5f : phase <= 10 ? 0.5f + 0.125f * (phase - 6) : 1f;
+        public static Vector2 LocationSpread(int phase) => phase < 11 ? new Vector2(0.07f, 0.08f)
+            : phase == 11 ? new Vector2(0.15f, 0.17f) : BenchmarkPitcher.LocationSpread;
+
+        // Exactly matches the saved lesson-2 mapping at scale .5. Unlock both legal
+        // endpoints around that same neutral height; zero action never moves the bat.
+        public static float GripHeight(float action, float limit, float centerHeight, float scale)
+        {
+            float anchor = 0.5f * Mathf.Clamp(centerHeight, -limit, limit);
+            float t = Mathf.Clamp01(2f * scale - 1f);
+            float endpoint = action >= 0f ? Mathf.Lerp(anchor + 0.5f * limit, limit, t)
+                : Mathf.Lerp(anchor - 0.5f * limit, -limit, t);
+            return Mathf.Lerp(anchor, endpoint, Mathf.Abs(Mathf.Clamp(action, -1f, 1f)));
+        }
+
+        public static PitchCommand SamplePitch(int phase, System.Random random, BaseballEnvironmentConfig config,
+            Vector2 center, Vector2 straightSpeedRangeKmh, int skillPhase = -1)
+        {
+            bool easy = phase >= 11 && random.NextDouble() < 0.25;
+            float mix = phase < 13 ? 0f : phase == 13 ? 0.25f : phase == 14 ? 0.5f : 1f;
+            if (!easy && mix > 0f && random.NextDouble() < mix)
+                return BenchmarkPitcher.Next(random, config, center);
+            float kmh = Mathf.Lerp(straightSpeedRangeKmh.x, straightSpeedRangeKmh.y, (float)random.NextDouble());
+            Vector2 aim = BenchmarkPitcher.SampleLocation(random, config, center, skillPhase >= 0
+                ? BatterSkills.LocationSpread(skillPhase) : easy ? Vector2.zero : LocationSpread(phase));
+            return new PitchCommand(PitchType.FourSeam, kmh / 3.6f, aim);
+        }
+    }
+
     /// <summary>
     /// 한 학습 씬의 투구 순서와 에피소드 경계를 맡는다(docs/training-curriculum.md).
     /// Academy 한 단계 직전(AgentPreStep)에 PlayDirector 상태를 보고 필요한 Agent에게만 결정을 요청한다.
@@ -74,6 +127,12 @@ namespace BaseballSimulation
         [SerializeField, Min(50)] private int maxPlaySteps = 1500;
 
         private System.Random scriptedRandom;
+        private int batterLessonOverride = -1;
+        private int batterLesson = -1;
+        private int preparationOverride = -1;
+        private int preparationPhase = -1;
+        private int skillPhase = -1;
+        private int skillOverride = -1;
         private System.Random situationRandom;
         private System.Random benchmarkRandom;
         private readonly TrainingStats stats = new TrainingStats();
@@ -155,7 +214,9 @@ namespace BaseballSimulation
         public float GetLastFieldingReward(int index) => index >= 0 && index < lastFieldingReward.Length ? lastFieldingReward[index] : 0f;
         public float LastRunnerOutcomeReward { get; private set; }
         /// <summary>수비·주자가 새 결정을 내리는 고정 단계 간격.</summary>
-        public int FieldDecisionInterval => fieldDecisionInterval;
+        // Serialized step limits were configured at 50 Hz. Preserve their duration at 100 Hz.
+        private int ScaledSteps(int steps) => Mathf.Max(1, Mathf.RoundToInt(steps * 0.02f / Time.fixedDeltaTime));
+        public int FieldDecisionInterval => ScaledSteps(fieldDecisionInterval);
         public PlateAppearanceResult LastPlateAppearanceResult { get; private set; }
         public float LastBatterOutcomeReward { get; private set; }
         /// <summary>이번 타석의 상대. 새 타석을 시작할 때 정한다.</summary>
@@ -165,6 +226,15 @@ namespace BaseballSimulation
         public ModelAsset BenchmarkBatterModel => benchmarkBatterModel;
         public float ScriptedPitcherBenchmarkProbability => scriptedPitcherBenchmarkProbability;
         public float FrozenBatterBenchmarkProbability => frozenBatterBenchmarkProbability;
+        public int BatterLesson => batterLesson;
+        public int BatterLessonOverride => batterLessonOverride;
+        public int PreparationPhase => preparationPhase;
+        public int PreparationOverride => preparationOverride;
+        public int SkillPhase => skillPhase;
+        public void SetSkillOverride(int phase) => skillOverride = Mathf.Clamp(phase, -1, BatterSkills.PhaseCount - 1);
+        public void SetPreparationOverride(int phase) => preparationOverride = Mathf.Clamp(phase, -1, BatterPreparation.PhaseCount - 1);
+        /// <summary>검증용. -1이면 Python 환경 파라미터를 읽는다. 변경은 다음 타석부터 적용한다.</summary>
+        public void SetBatterLessonOverride(int value) => batterLessonOverride = Mathf.Clamp(value, -1, 3);
 
         private bool UsesPitcherAgent => stage >= TrainingStage.BatterPitcher;
         private bool UsesFielding => stage >= TrainingStage.FullTeam;
@@ -235,9 +305,17 @@ namespace BaseballSimulation
                 return;
             }
             if (UsesFielding && (runners == null || runners.Length != director.RunnerSlotCount || runners.Length == 0 ||
-                fielders == null || fielders.Length != director.FielderCount || fielders.Length == 0))
+                fielders == null || fielders.Length != (director.SimplifiedFielding ? 1 : director.FielderCount) || fielders.Length == 0))
             {
-                Debug.LogError($"[TrainingEnvController] {stage} 단계는 PlayDirector 주자 슬롯·수비수 수만큼의 RunnerAgent·FielderAgent가 필요하다.", this);
+                Debug.LogError($"[TrainingEnvController] 주자 슬롯과 수비 Agent 연결이 필요하다(단순 수비는 중견수 Agent 1개).", this);
+                enabled = false;
+                return;
+            }
+            if (UsesFielding && director.SimplifiedFielding &&
+                (director.FielderCount != 5 || fielders[0] == null || fielders[0].Director != director ||
+                 fielders[0].FielderIndex != director.FindFielder(FielderRole.CenterField)))
+            {
+                Debug.LogError("[TrainingEnvController] 단순 수비는 몸 5개와 같은 경기장의 중견수 Agent 1개가 필요하다.", this);
                 enabled = false;
                 return;
             }
@@ -331,7 +409,25 @@ namespace BaseballSimulation
             System.Array.Clear(baseCovered, 0, baseCovered.Length);
             situationPending = UsesFielding && newPlateAppearance && situationRandom.NextDouble() < randomSituationProbability;
             situationSettling = false;
-            if (newPlateAppearance) BeginOpponent();
+            if (newPlateAppearance)
+            {
+                BeginOpponent();
+                float lesson = batterLessonOverride >= 0 ? batterLessonOverride : Academy.Instance.EnvironmentParameters.GetWithDefault("batter_lesson", -1f);
+                batterLesson = stage == TrainingStage.Batter && BaseballEnvironmentConfig.IsFinite(lesson)
+                    ? Mathf.Clamp(Mathf.FloorToInt(lesson), -1, 3) : -1;
+                float preparation = preparationOverride >= 0 ? preparationOverride
+                    : Academy.Instance.EnvironmentParameters.GetWithDefault("batter_preparation", -1f);
+                preparationPhase = stage == TrainingStage.Batter && BaseballEnvironmentConfig.IsFinite(preparation)
+                    ? Mathf.Clamp(Mathf.FloorToInt(preparation), -1, BatterPreparation.PhaseCount - 1) : -1;
+                if (preparationPhase >= 0) batterLesson = BatterPreparation.ControlScale(preparationPhase) < 1f ? 2 : 3;
+                float skill = skillOverride >= 0 ? skillOverride : Academy.Instance.EnvironmentParameters.GetWithDefault("batter_skill", -1f);
+                skillPhase = stage == TrainingStage.Batter && preparationPhase == 0 && BaseballEnvironmentConfig.IsFinite(skill)
+                    ? Mathf.Clamp(Mathf.FloorToInt(skill), -1, BatterSkills.PhaseCount - 1) : -1;
+                batter.ConfigureTrainingLesson(batterLesson);
+                batter.ConfigurePreparation(preparationPhase,
+                    Academy.Instance.EnvironmentParameters.GetWithDefault("batter_prepared", 0f) >= 0.5f);
+                batter.ConfigureSkills(skillPhase);
+            }
             batter.BeginPitch();
             if (UsesPitcherAgent && opponent != PlateAppearanceOpponent.ScriptedPitcher) pitcher.BeginPitch();
         }
@@ -423,11 +519,11 @@ namespace BaseballSimulation
             if (state == PlayState.BattedBallInFlight && UsesFielding) StepFielding();
 
             if (IsPitchFinished(state)) FinishPitch();
-            else if (playSteps > maxPlaySteps) AbortPlay();
+            else if (playSteps > ScaledSteps(maxPlaySteps)) AbortPlay();
         }
 
         /// <summary>
-        /// 타구가 살아 있는 동안 수비 9명과 살아 있는 주자에게 결정을 요청한다. 사이 단계는 마지막 행동을 반복한다.
+        /// 타구가 살아 있는 동안 수비 Agent(단순 수비는 CF 한 명)와 살아 있는 주자에게 결정을 요청한다. 사이 단계는 마지막 행동을 반복한다.
         /// 수비 결정마다 그룹(포구·포스 커버) 보조 보상과 개인(쫓기·베이스 커버) 보조 보상 γΦ(지금) − Φ(직전 결정)를 준다.
         /// 결정 전에 더한 보상은 직전 결정의 행동 결과로 전달된다.
         /// </summary>
@@ -437,14 +533,16 @@ namespace BaseballSimulation
             if (fieldSteps > 0)
                 for (int i = 0; i < fielders.Length; i++)
                     AddPositionReward(i, PlayOutcomeRewards.PositionReward(director, fielders[i].FielderIndex, Time.fixedDeltaTime));
-            bool decide = fieldSteps % fieldDecisionInterval == 0;
+            bool decide = fieldSteps % FieldDecisionInterval == 0;
+            // 포구 뒤에는 정기 결정 간격을 기다리지 않고 새 관측으로 송구 베이스를 고른다.
+            bool fielderDecide = decide || (director.SimplifiedFielding && director.CanThrow(fielders[0].FielderIndex));
             if (fieldSteps == 0)
             {
                 // 타구 순간 살아 있는 주자만 이번 플레이의 주자 그룹에 넣는다.
                 foreach (RunnerAgent runner in runners)
                     if (runner.IsRunning) offense.RegisterAgent(runner);
             }
-            if (decide)
+            if (fielderDecide)
             {
                 float potential = PlayOutcomeRewards.DefensePotential(director);
                 if (fieldSteps > 0) AddDefenseShaping(PlayOutcomeRewards.DefenseShapingGamma * potential - defensePotential);
@@ -463,7 +561,8 @@ namespace BaseballSimulation
             fieldSteps++;
             foreach (FielderAgent fielder in fielders)
             {
-                if (decide) fielder.RequestDecision();
+                if (director.SimplifiedFielding && director.BattedBallFielded && !director.CanThrow(fielder.FielderIndex)) continue;
+                if (fielderDecide) fielder.RequestDecision();
                 else fielder.RequestAction();
             }
             fieldersActed = true;
@@ -493,8 +592,15 @@ namespace BaseballSimulation
                 pitcher.RequestDecision();
                 return;
             }
+            if (preparationPhase >= 0)
+            {
+                director.RequestThrowPitch(BatterPreparation.SamplePitch(preparationPhase, scriptedRandom,
+                    director.EnvironmentConfig, director.StrikeZoneCenter, scriptedSpeedRangeKmh, skillPhase));
+                return;
+            }
             float kmh = Mathf.Lerp(scriptedSpeedRangeKmh.x, scriptedSpeedRangeKmh.y, (float)scriptedRandom.NextDouble());
-            Vector2 location = BenchmarkPitcher.SampleLocation(scriptedRandom, director.EnvironmentConfig, director.StrikeZoneCenter, scriptedLocationSpread);
+            Vector2 spread = batterLesson == 0 || batterLesson == 1 ? Vector2.zero : batterLesson == 2 ? new Vector2(0.07f, 0.08f) : scriptedLocationSpread;
+            Vector2 location = BenchmarkPitcher.SampleLocation(scriptedRandom, director.EnvironmentConfig, director.StrikeZoneCenter, spread);
             director.RequestThrowPitch(new PitchCommand(PitchType.FourSeam, kmh / 3.6f, location));
         }
 
@@ -512,6 +618,12 @@ namespace BaseballSimulation
         private void FinishPitch()
         {
             LastEndReason = director.GetSnapshot().EndReason;
+            if (UsesFielding && LastEndReason == PitchEndReason.Timeout)
+            {
+                AbortPlay();
+                return;
+            }
+            if (UsesFielding) stats.RecordFieldingTimeout(false);
             bool resolved = director.TryGetPlaySummary(out PlaySummary play);
             // 고정 상대 평가 타석은 일반 지표(Agent끼리 대결)에 섞지 않고 평가 묶음에 따로 기록한다.
             string benchmark = BenchmarkGroup;
@@ -570,6 +682,8 @@ namespace BaseballSimulation
                 {
                     stats.RecordPlateAppearance(situation.Result, plateAppearancePitches, LastBatterOutcomeReward, UsesFielding, resolved, play,
                         fieldSteps * Time.fixedDeltaTime);
+                    if (batter.QualityRewardEnabled || batter.TrainingLesson >= 0) stats.RecordTrainingPlateAppearance(batter);
+                    if (preparationPhase >= 0) stats.RecordPreparationPlateAppearance(batter);
                     if (UsesPitcherAgent) stats.RecordMatchup(LastBatterOutcomeReward);
                 }
                 plateAppearancePitches = 0;
@@ -583,6 +697,11 @@ namespace BaseballSimulation
 
         private void AbortPlay()
         {
+            LastEndReason = director.GetSnapshot().EndReason;
+            LastPlaySummary = default;
+            LastPlayHadFielding = fieldersActed;
+            LastBatterOutcomeReward = LastDefenseOutcomeReward = LastRunnerOutcomeReward = 0f;
+            if (UsesFielding) stats.RecordFieldingTimeout(LastEndReason == PitchEndReason.Timeout);
             if (UsesFielding)
             {
                 if (fieldersActed)

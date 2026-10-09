@@ -1,24 +1,79 @@
 # 학습 단계(커리큘럼)와 씬 구성
 
+## 타자 카메라 192×192·12장 (2026-10-09)
+
+사용자 요청으로 현재 학습 씬의 타자 카메라를 **192×192 흑백·12장·100Hz**로 변경한다. 최근 영상 범위는110ms이며 기존256×256·30장 대비 영상 원소 수가77.5% 줄어든다. 기존30장 학습은 정상 저장했고, 새 입력에 맞춘 타자 가중치와 기존 투수·주자·CF 가중치를 별도 초기값으로 보존한다. 타자 이식은 근사 초기화이므로 기존 타격 성능을 그대로 보장하지 않는다. 새 run-id와 새 Player를 사용한다. 현재 계약·실행·검증은 [타자 Camera12_192](batter-camera12-192.md)를 따른다. 아래30장·6장 기록은 이전 설정이다.
+
+## 영상 프레임 재사용·수동 3단계 직행 (2026-10-09)
+
+사용자 요청으로 30장·해상도·픽셀 값을 유지한 PNG 프레임 캐시와 흑백 배열 변환 최적화를 적용한다. 기존 타자 모델을 별도 보존해 준비·2단계를 생략하고 수동 명령으로3단계에 직접 사용할 수 있다. 투수·주자·CF는 새로 학습하며 기존 성적 통과로 간주하지 않는다. 기존 자동 연결은 취소했다. [계약·검증·첫 실행/재개 명령](batter-visual-cache-stage3.md)을 따른다.
+
+## 타이밍 집중·정타 진행 보상 강화 (2026-10-09)
+
+Camera30 타자는 배트 위치·각도를 고정한 타이밍 과정부터 높이·각도·배트 위치를 차례로 열고 전체 준비로 연결한다. 몸 고정·30장·100Hz와 최종 정타·성적 통과 기준은 유지한다. 준비 과정 및 `batter_prepared=1`의 정타 미달 실제 페어 보상 상한을 0.5→1.5로 높이고 접촉 품질 75%·속도 25%로 진행 보상을 강화한다. [최신 계약·수식·실행](batter-timing-progress.md)을 따른다. 아래 약한 페어 0~0.5 기록은 변경 전 설명이며 준비 모드가 아닌 기존 학습에는 계속 적용한다.
+
+## 타자 몸 위치 고정 (2026-10-09)
+
+학습 타자의 몸 위치는 모든 과정에서 기준 위치로 고정한다. 기존 모델을 이어 쓰도록 행동 크기를 유지하며 몸 이동 행동 0·1만 무시한다. 배트 위치·스윙 각도·타이밍·30장 입력·성적 기준은 유지한다. [계약·학습 재개·검증](batter-fixed-stance.md)을 따른다. 아래 몸 이동 관련 기록은 변경 전 설명이다.
+
+## 영상 30장·100Hz 적용 (2026-10-09)
+
+현재 타자 영상 스택은 6→30장으로 변경했다. 256×256 흑백과 10ms 촬영/판단을 유지하며, 투구 중 연속 관측의 시간 범위는 290ms다. 기존 6장 모델의 1,062,459스텝 가중치를 별도 30장 초기화 모델로 옮기고, 전체 준비 과정 1에서 새 학습을 시작했다. Camera30 설정은 타자 배치 32·버퍼 256·궤적 64를 사용한다. 기존 6장 설정·실행 파일·학습 결과는 보존했다. [입력·모델 이식·메모리·실행 안내](batter-camera-30.md)를 따른다. 아래 6장 기록은 이전 검증 결과다.
+
+## 현재6장 학습의2→3단계 자동 연결 (2026-10-09)
+
+분리10개→전체 준비16개→2단계는 기존 `prepare_batter.py --continue-stage2` 체인을 유지한다. 별도 `continue_stage3.py`가 그 체인 종료를 기다리고, 준비 통과와2단계 타자1,200만·투수26만 실제 저장 스텝/최종 모델을 확인해 새 `stage3_full_team_camera6_selfplay`를 시작한다. 주자·CF는 새 모델이며 타자·투수만 self-play다. 전환은 단계 완료 기준이고 높은 실전 성적을 보장하지 않는다. [연결·검증·상태](stage23-continuation.md)를 따른다.
+
+## 선택적 타이밍 분리와 평가 (2026-10-09)
+
+새 `stage1_batter_camera6_skills`는 저장된6장 모델에서 타이밍→높이→각도→위치를 배우는10개 준비 과정을 진행한다. 성적 통과 후 별도 `_prepare` 실행에서 기존16개 준비를 이어가며 전체 준비 완료 후2단계를 시작한다. 기존 단계 설정은 그대로다. [과정·평가·실행](batter-skills.md)을 따른다.
+
+## 영상 6장·촬영/판단 100Hz (2026-10-08)
+
+사용자 요청으로 256×256 흑백 영상 스택을3→6장, 고정 물리·타자 촬영/판단 간격을20→10ms로 바꿨다. 과거 영상 범위는40→50ms이며 수비·주자 간격과 플레이 제한 시간은 기존 초 단위를 유지한다. 기존1단계 가중치를 동일 시점 채널에 이식한 별도 `stage1_batter_camera6_prepare` 실행을 사용한다. 아래3장/50Hz 설명은 이전 기록이다. [최신 계약·이식·실행·검증](batter-camera-timing.md)을 따른다.
+
+## 2단계 타자 준비 과정 (2026-10-08)
+
+기존1단계 과정2에서 바로 동시 학습으로 넘기는 대신 타자 전용16개 준비 과정을 추가했다. 최소50타석·연속3구간의 접촉/정타/선구 기준을 통과한 뒤 제한을 없애고 제어와5구종을 넓힌다. 최종 통과와 정상 저장 이후 준비 모델의2단계 셀프플레이로 연결한다. [계약·실행·검증](batter-preparation.md)을 따른다.
+
+## 1단계 내부 접촉 커리큘럼 (2026-10-08)
+
+현재는 **중앙 접촉(0) → 중앙 정타(1) → 제한 자세·위치(2) → 전체 타격(3)** 네 과정이다. 모두 구속 120~150 km/h이고 0·1은 같은 고정 중앙 자세·기준 각도다. 최소 100타석 뒤 보상 평균이 0에서는 >0.2, 1·2에서는 >1.0이어야 상승한다. 새 타석에서 난이도를 고정하며 진행 중 타석을 강제 초기화하지 않는다. 접촉 추가 +1.5는 0에서만 주고 파울이면 회수한다. 1·2·3은 접촉 품질≥0.6·속도≥120 km/h·발사각5~35°인 페어 타구에 2.63 이상의 보상을 주며 나머지 페어 타구는 최대0.5다. 초기 탐색 0.02·일정 스케줄·1만 스텝 요약은 유지한다.
+
+`Training/resul/stage1_batter_camera_contact`는 실제 접촉을 배웠지만 287만 스텝에 속도60.80 km/h·발사각−21.94°·첫 낙하거리1.29 m로 약한 내려치기에 머물렀다. 이 결과를 보존하고 새 `stage1_batter_camera_power`로 재학습한다. 과정 번호가 달라 이전 실행의 `--resume`은 사용하지 않는다. 2단계 타자 초기값도 새 결과를 가리킨다.
+
+자동 전환은 스텝 한도·최종 산출물·`batter_lesson.lesson_num=3`에 더해 최근 전체 조작 요약3개에서 정타 타석 비율 평균≥25%를 요구한다. 초기/혼합 과정 요약은 제외한다. 장시간 성능을 보장하는 검증은 아니다. 계약은 [타자 Agent](batter-agent.md#1단계-접촉-우선-커리큘럼-2026-10-08), 명령은 [실행 안내](../Training/README.md)를 따른다.
+
+3단계 `Timeout`은 미해결 플레이다. Director는 현재 주자 위치를 `PlaySummary`·상황으로 확정하지 않고 컨트롤러는 타자·투수·수비·주자 학습을 중단한다. 결과 보상 없이 원래 누상·아웃·득점을 복원하고 새 타석으로 시작한다. `Env/Fielding Timeout`으로 별도 감시한다.
+
+## 3단계 수비 단순화 (2026-10-07)
+
+수비 몸은 C·1B·2B·3B·CF 5개, 학습 수비는 중견수 1개다. 고정 4명은 발을 움직이지 않는다. 중견수 행동은 연속 2 + 이산 `[3]`(0=1루, 1=2루, 2=3루)이며 포구 뒤 보유 대기·홈·운반·중계가 없다. 새 수비 체크포인트로 시작하고 이전 이산 `[5]` 수비 모델을 재개하지 않는다. MA-POCA 확장과 보상·지표는 유지하되 커버/자리 이탈 보상은 0이며 중견수만 쫓기 보상을 받는다. 네 3단계 YAML의 수비 batch 128 / buffer 2048 / max_steps 3,000,000은 단일 수비 Agent 기준 시작값이다. 학습 성능을 검증한 값은 아니다.
+
+## 타자 포수 시점 카메라 전환 (2026-10-07)
+
+모든 단계의 타자 관측을 벡터 16 + 고정 포수 카메라 256×256 흑백 ×3으로 전환했다. 행동·보상은 유지한다. 이전 레이 타자 모델은 호환되지 않으므로 1단계부터 새로 학습한다. 현재 기본 run-id는 `stage1_batter_camera_power` → `stage2_batter_pitcher_camera` → `stage3_full_team_camera_cf`이며 셀프플레이는 2·3단계에 `_selfplay`를 붙인다. YAML init_path도 새 결과를 가리킨다. 자동 실행은 그래픽을 켜며 기존 실행 파일은 다시 빌드해야 한다. 고정 타자 평가 모델은 새 `BenchmarkBatter_Stage1_Camera.onnx`가 준비될 때까지 연결하지 않는다. 아래 레이 run-id·모델 설명은 이전 실행 기록이다. [실행 안내](../Training/README.md)를 따른다.
+
+
 2026-09-26 사용자 요청으로 강화학습을 세 단계로 진행한다. 이 요청은 AGENTS.md의 "셀프플레이·다중 에이전트 학습·학습 YAML은 범위 밖" 제한을 사용자가 명시적으로 확장한 것이다. 각 단계는 따로 학습하며, 앞 단계에서 학습한 타자 모델을 다음 단계의 초기값으로 이어 쓴다. 2026-09-27에는 별도 실행 스크립트로 단계 전환을 자동화했다.
 
-**자동 전환 기준:** 각 단계의 모든 Behavior가 해당 YAML의 `max_steps`에 도달하고 최종 모델·체크포인트가 저장되면 다음 단계 학습기를 시작한다. 이전 단계의 체크포인트를 `init_path`로 읽는다. 보상 점수나 승률로 조기 전환하지 않는다. `Training/auto_curriculum.py`는 각 씬의 독립 실행 파일을 별도 복사본에서 빌드해 차례로 실행한다. 실행 방법과 기존 1단계 학습에 붙는 방법은 [Training/README.md](../Training/README.md)에 있다.
+**자동 전환 기준:** 각 단계의 모든 Behavior가 해당 YAML의 `max_steps`에 도달하고 최종 모델·체크포인트가 저장되면 다음 단계 학습기를 시작한다. 이전 단계의 체크포인트를 `init_path`로 읽는다. 보상 점수나 승률로 2·3단계를 조기 시작하지 않는다. 단, 1단계 내부 난이도는 보상 기준으로 상승하고 다음 단계 시작 전 최종 난이도 3 도달과 최근 정타 타석 비율도 확인한다. `Training/auto_curriculum.py`는 각 씬의 독립 실행 파일을 별도 복사본에서 빌드해 차례로 실행한다. 실행 방법과 기존 1단계 학습에 붙는 방법은 [Training/README.md](../Training/README.md)에 있다.
 
 | 단계 | Behavior별 학습 한도(`max_steps`) | 셀프플레이 설정(`--self-play`) |
 | --- | --- | --- |
 | 1 | 타자 300만 | 같음(공유) |
 | 2 | 타자 600만, 투수 40만 | 타자 600만, 투수 26만 |
-| 3 | 타자 600만, 투수 40만, 주자 200만, 수비 2,000만 | 타자 600만, 투수 26만, 주자 200만, 수비 2,000만 |
+| 3 | 타자 600만, 투수 40만, 주자 200만, 중견수 300만 | 타자 600만, 투수 26만, 주자 200만, 중견수 300만 |
 
 2026-09-27에 [고정 상대 평가](#고정-상대-평가-2026-09-27)와 [셀프플레이 설정](#동시-학습과-셀프플레이)을 더했다.
 
 | 단계 | 씬 | 학습 Agent (Behavior) | 투구 |
 | --- | --- | --- | --- |
-| 1 타자 | `Scenes/Training/Stage1_Batter.unity` | 타자 `BaseballBatter` | 스크립트 투수가 항상 존 중앙으로 직구를 던진다. 구속만 바뀐다 |
+| 1 타자 | `Scenes/Training/Stage1_Batter.unity` | 타자 `BaseballBatter` | 포심 직구, 구속 120~150 km/h. 중앙 → 좁은 위치 분포 → 볼 포함 기존 분포 |
 | 2 타자+투수 | `Scenes/Training/Stage2_BatterPitcher.unity` | 타자, 투수 `BaseballPitcher` | 투수 Agent가 구종·구속·위치를 고른다 |
-| 3 전체 | `Scenes/Training/Stage3_FullTeam.unity` | 타자, 주자 4명 `BaseballRunner`(타자주자 + 1·2·3루), 투수, 수비 9명 `BaseballFielder` | 투수 Agent |
+| 3 전체 | `Scenes/Training/Stage3_FullTeam.unity` | 타자, 주자 4명 `BaseballRunner`(타자주자 + 1·2·3루), 투수, 고정 수비 4명 + 중견수 `BaseballFielder` | 투수 Agent |
 
-3단계 수비는 투수·포수·1루수·2루수·3루수·유격수·좌익수·중견수·우익수 9명이다(2026-10-02 5명에서 확장). 투수·포수 수비수는 타구 수비만 한다. 구종은 포심·투심·커브·슬라이더·체인지업이다.
+3단계 타구 수비는 C·1B·2B·3B·CF 5명이다(2026-10-07 단순화). 앞의 네 명은 고정이며 중견수만 학습한다. 투수는 투구만 한다. 구종은 포심·투심·커브·슬라이더·체인지업이다.
 
 ## 공통 구조
 
@@ -46,7 +101,7 @@
 | `Ready`, 타자 자세 전 | 타자 1회 (자세·손잡이) |
 | `Ready`, 자세 후 | 1단계: 컨트롤러가 스크립트 투구를 요청. 2·3단계: 투수 1회 |
 | `PitchInFlight` | 타자, 스윙할 때까지 매 고정 단계 |
-| `BattedBallInFlight` (3단계) | 수비 9명과 살아 있는 주자 |
+| `BattedBallInFlight` (3단계) | 중견수와 살아 있는 주자(중견수 포구 직후 추가 결정) |
 
 **플레이 종료와 초기화.**
 
@@ -55,7 +110,7 @@
 - 투구 요청이 거부되거나 한 플레이가 `maxPlaySteps`(기본 1500 고정 단계 = 30 s)를 넘으면, 열린 에피소드를 모두 `EpisodeInterrupted`로 닫고 초기화한다.
 - 컨트롤러가 켜져 있는 동안 수동 입력과 자동 반복 투구는 꺼 둔다.
 
-**모델 이어 쓰기.** 타자의 관측(벡터 16 + `BallEye` 레이 459)과 행동(연속 7 + 이산 [2])은 세 단계에서 같다. 그래서 1단계 체크포인트를 2·3단계의 `init_path`로 쓸 수 있다. 투수 계약도 2·3단계에서 같다.
+**모델 이어 쓰기.** 타자의 관측(벡터 16 + `CatcherEye` 영상 256×256×3)과 행동(연속 7 + 이산 [2])은 세 단계에서 같다. 그래서 1단계 체크포인트를 2·3단계의 `init_path`로 쓸 수 있다. 투수 계약도 2·3단계에서 같다.
 
 **투구 명령.** 스크립트 투수와 투수 Agent 모두 `PlayDirector.RequestThrowPitch(PitchCommand)`를 쓴다. 명령에는 구종, 구속(m/s), 홈플레이트 목표 위치가 들어간다.
 
@@ -65,28 +120,28 @@
 
 ## 1단계 — 타자
 
-- **투구:** `TrainingEnvController`의 스크립트 투수가 매 투구 포심 직구를 **규칙 스트라이크존 중앙**으로 던진다. 중앙은 좌우 0, 존 아래·위 높이의 가운데(기본 0.755 m)이며 Scene 뷰의 존 테두리 중앙과 같다. 구속은 `scriptedSpeedRangeKmh`(기본 120~150 km/h)에서 투구마다 균등하게 뽑는다. 시드는 `scriptedPitchSeed`다.
-- **존 중앙과 기준 자세:** 존 중앙은 피칭머신 목표점 `PitchTarget`(높이 1.0 m)보다 0.245 m 낮다. 타자 기준 자세·손잡이는 `PitchTarget` 기준이라, 중앙 공을 치려면 손잡이를 낮추는 자세를 학습해야 한다.
-- **보상:** [타자 보상 설계](batter-reward-design.md) 그대로다.
-- **학습 설정:** `Training/config/stage1_batter.yaml`
-- **실행:** 저장소 루트에서 `mlagents-learn Training/config/stage1_batter.yaml --run-id=stage1_batter --results-dir=Training/results`를 실행한 뒤 Editor에서 `Stage1_Batter` 씬을 Play한다.
+- **투구:** 스크립트 투수의 포심 직구다. 중앙 → 좁은 중앙 주변 분포 → 기존 볼 포함 분포를 난이도에 따라 적용한다. 모든 난이도에서 `scriptedSpeedRangeKmh` 기본 120~150 km/h를 균등하게 뽑는다. 시드는 `scriptedPitchSeed`다.
+- **제어:** 준비 단계는 자세·손잡이·각도 탐색 범위를 줄여 타이밍부터 배운다. 난이도 2는 전체 7+[2] 제어다. 기본 손잡이와 존 중앙의 높이 차 −0.245 m는 준비 단계에만 자동 보정하고 최종 단계는 자세 행동으로 결정한다. 스윙은 전 단계에서 Agent가 선택한다.
+- **보상:** [기본 보상과 1단계 추가 접촉 보상](batter-reward-design.md#1단계-접촉-훈련-보상-2026-10-08)을 합친다. 한 에피소드는 한 타석이다.
+- **학습 설정:** `Training/config/stage1_batter.yaml`, 총 300만 스텝. 준비 난이도 전환은 위 보상 기준이다.
+- **실행:** 저장소 루트에서 `mlagents-learn Training/config/stage1_batter.yaml --run-id=stage1_batter_camera_power --results-dir=Training/results`를 실행한 뒤 Editor에서 `Stage1_Batter` 씬을 Play한다. [cd 포함 명령](../Training/README.md)을 따른다.
 
 ## 2단계 — 타자 + 투수
 
 - **씬:** 1단계 씬 구성에 `Actors/Pitcher`(투수 Agent, 팀 1)를 더하고 피칭머신을 비활성화한다.
 - **투구:** 타자가 자세를 잡으면 컨트롤러가 투수에게 한 번 결정을 요청한다. 투수는 구종 5종·구속·목표 위치를 고른다. 계약과 보상은 [투수 Agent](pitcher-agent.md)에 있다.
-- **에피소드:** 타자와 투수 모두 한 투구가 한 에피소드이고 같은 판정에서 끝난다. 두 에피소드가 모두 닫히면 초기화한다.
+- **에피소드:** 타자와 투수 모두 한 타석이 한 에피소드다. 투구마다 카운트를 이어 초기화하고 볼넷·삼진·인플레이로 타석이 끝나면 에피소드를 닫는다.
 - **학습 설정:** `Training/config/stage2_batter_pitcher.yaml`. 타자(팀 0)와 투수(팀 1)를 동시에 학습한다. 현재 YAML의 `self_play` 예시는 주석이므로 적용되지 않는다. 타자는 1단계 체크포인트(`init_path`)에서 시작한다.
-- **실행:** 1단계 학습 결과가 `Training/results/stage1_batter`에 있어야 한다. `mlagents-learn Training/config/stage2_batter_pitcher.yaml --run-id=stage2_batter_pitcher --results-dir=Training/results` 후 `Stage2_BatterPitcher` 씬을 Play한다.
+- **실행:** 새 1단계 결과가 `Training/results/stage1_batter_camera_power`에 있어야 한다. `mlagents-learn Training/config/stage2_batter_pitcher.yaml --run-id=stage2_batter_pitcher_camera --results-dir=Training/results` 후 `Stage2_BatterPitcher` 씬을 Play한다.
 
-## 3단계 — 타자·주자 + 투수 + 수비 9명
+## 3단계 — 타자·주자 + 투수 + 고정 수비 4명·중견수
 
 - **씬:** 2단계 구성에 두 가지를 더한다.
-  - 수비수 9명 `Actors/Fielder_P|C|1B|2B|3B|SS|LF|CF|RF`(`FielderController` + `FielderAgent`, 팀 1). `PlayDirector` 수비수 목록에도 같은 순서(`FielderRole` 값 순서)로 연결한다. 투수 몸의 모양 부품은 `Fielder_P`로 옮겨 타구 뒤 수비수로 움직인다.
+  - 수비 몸 5개 `Actors/Fielder_C|1B|2B|3B|CF`를 Director 목록에 이 순서로 연결한다. 고정 네 몸은 `FielderController`만 있고 CF만 `FielderAgent`(팀 1)다. 투수 모양 부품은 원래 Pitcher 아래에 둔다.
   - 누상 주자 3명 `Actors/BaseRunner_1B|2B|3B`(`RunnerController`). `PlayDirector` 누상 주자 슬롯에 연결한다.
   - 주자 4명(타자주자 + 누상 주자)의 `RunnerAgent`(팀 0).
-- **시작 위치:** P 투수 몸 자리 (0.35, 18.69), C (0, -1.6), 1B (16, 23), 2B (9, 35), 3B (-17, 22.5), SS (-9, 35), LF (-36, 66), CF (0, 80), RF (36, 66) m.
-- **흐름:** 투구·타격은 2단계와 같다. 타구가 나오면 수비 9명과 살아 있는 주자가 0.1 s마다 결정한다. `PlayDirector`는 다음을 판정해 플레이를 끝낸다.
+- **시작 위치:** 홈 기준 C (0, −1.6), CF (0, 80) m. 1B·2B·3B는 `FieldLayout`의 실제 베이스 위치에 고정한다.
+- **흐름:** 투구·타격은 2단계와 같다. 타구가 나오면 CF와 살아 있는 주자가 0.1 s마다 결정한다. CF가 잡으면 즉시 정지하고 다음 Academy 단계에 새 결정을 받아 1·2·3루에 바로 던진다. 고정 수비수는 자동 포구·아웃 판정만 하며 중계하지 않는다. 먼 외야에서 기본 송구 속력으로 도달하지 못하면 환경이 속력을 보충한다. `PlayDirector`는 다음을 판정해 플레이를 끝낸다.
   - 포구·송구
   - 포스·태그·리터치 아웃과 세이프
   - 득점, 3아웃
@@ -97,7 +152,7 @@
   - 타자·투수: PPO, 2단계 체크포인트에서 시작
   - 주자 그룹: MA-POCA(`poca`), 수비 그룹: MA-POCA 수비 확장(`baseball_fielder_poca`, 등록 방법은 [학습 안내](../Training/README.md#3단계-수비-보조-보상-2026-10-01))
   - 모든 behavior를 동시에 학습한다
-- **실행:** `mlagents-learn Training/config/stage3_full_team.yaml --run-id=stage3_full_team --results-dir=Training/results` 후 `Stage3_FullTeam` 씬을 Play한다.
+- **실행:** `mlagents-learn Training/config/stage3_full_team.yaml --run-id=stage3_full_team_camera_cf --results-dir=Training/results` 후 `Stage3_FullTeam` 씬을 Play한다.
 
 ## TensorBoard 지표
 
@@ -125,18 +180,24 @@
 | `Swing/Timing Error (ms)` (히스토그램) | 스윙마다 | 전체 | 목표 평면 도착 대비 타이밍. 음수는 이르고 양수는 늦다 |
 | `Swing/Bat-Ball Distance (cm)` | 스윙마다(측정된 경우) | 전체 | 공과 배트의 최소 거리 |
 | `Batter Reward/Contact`·`Miss`·`Exit Speed`·`Pop Fly`·`Foul`·`Home Run`·`Pitch Total` | 투구마다 | 전체 | [타자 보상](batter-reward-design.md) 성분별 투구당 평균 |
+| `Batter Reward/Training Contact Bonus` | 투구마다 | 전체 | 1단계 과정 0의 유효 페어 접촉 +1.5, 파울 회수 후 0. 나머지 과정은 0. `Pitch Total`에 포함 |
+| `Batter Training/Lesson` | 투구마다 | 전체 | −1 기존 전체 조작, 0 중앙 접촉, 1 중앙 정타, 2 제한 자세·위치, 3 전체 타격. 타석 경계 전환 때문에 평균은 정수가 아닐 수 있음 |
+| `Batter Reward/Training Quality Adjustment` | 투구마다 | 전체 | 1단계 과정1~3의 부호 있는 품질 보정분, 기본 합과 더하면 실제 투구 합계 |
+| `Batted Ball/Contact Quality` | 실제 접촉마다 | 전체 | 타이밍×배트 정타 위치 품질 0~1 |
+| `Batter Training/Qualified Hit` | 완료한 훈련 타석마다 | 1 | 정타 페어/홈런1, 볼넷·삼진·그 밖의 타석0. 자동 전환에 사용 |
+| `Env/Fielding Timeout` | 종료/중단한 수비 플레이마다 | 3 | 시간 초과1/기타0. `Play End/Timeout`에 미해결 플레이를 섞지 않음 |
 | `Batter Reward/Outcome` | 타석마다 | 전체 | 타석 결과 보상 |
 | `Plate Appearance/Strikeout`·`Walk`·`In Play` | 타석마다 | 전체 | 삼진율·볼넷률·인플레이 비율 |
 | `Plate Appearance/Pitches` | 타석마다 | 전체 | 타석당 투구 수 |
 | `Plate Appearance/On Base` | 결과가 확정된 타석 | 3 | 출루율. 볼넷 또는 타자주자가 1루 이상 산 인플레이 |
 | `Play/Outs`·`Runs`·`Batter Bases`·`Runner Outs`·`Bases Advanced` | 판정까지 끝난 인플레이 | 3 | 인플레이 한 번의 아웃·득점·타자 진루·주자 아웃·총 진루 |
 | `Play/Live Time (s)` | 판정까지 끝난 인플레이 | 3 | 타구가 살아 있던 시간(수비 처리 속도) |
-| `Play End/Fly Out`·`Force Out`·`Tag Out`·`Runner Safe`·`Run Scored`·`Home Run`·`Ground Rule Double`·`Timeout` | 판정까지 끝난 인플레이 | 3 | 플레이 종료 원인 비율 |
+| `Play End/Fly Out`·`Force Out`·`Tag Out`·`Runner Safe`·`Run Scored`·`Home Run`·`Ground Rule Double`·`Timeout` | 판정까지 끝난 인플레이 | 3 | 완결한 플레이의 종료 원인 비율. 미해결 시간 초과는 제외 |
 | `Half Inning/Runs` | 3아웃마다 | 3 | 반 이닝 득점. 무작위 상황으로 시작한 반 이닝은 상황을 정한 뒤의 득점이다 |
 | `Defense/Fielded` | 수비가 결정한 플레이마다(파울·평가 타석 포함) | 3 | 수비가 타구를 한 번이라도 잡은 비율. 수비 학습이 시작됐는지 가장 먼저 보는 값이다 |
-| `Defense Reward/Outcome`·`Shaping` | 수비가 결정한 플레이마다(파울·평가 타석 포함) | 3 | 수비 그룹의 결과 보상과 포구·포스 커버 [보조 보상](fielding-agents.md#수비-보조-보상-2026-10-01) 합. 쫓기는 개인 보상으로 분리했다. `Environment/Group Cumulative Reward`에는 둘과 시간 감점이 모두 들어 있다. 보조 보상 합은 할인하지 않은 값이라 공·베이스에서 먼 상태가 길수록 오히려 커질 수 있다(이전 그룹 쫓기 검증: 제자리 수비 +1.01). 실력 지표로 쓰지 말고 수비 실력은 `Outcome`·`Fielded`·`Play/*`로 본다 |
+| `Defense Reward/Outcome`·`Shaping` | 수비가 결정한 플레이마다(파울·평가 타석 포함) | 3 | 수비 그룹의 결과 보상과 포구 [보조 보상](fielding-agents.md#수비-보조-보상-2026-10-01)(단순 수비는 포스 커버 항 0) 합. 쫓기는 개인 보상으로 분리했다. `Environment/Group Cumulative Reward`에는 둘과 시간 감점이 모두 들어 있다. 보조 보상 합은 할인하지 않은 값이라 공·베이스에서 먼 상태가 길수록 오히려 커질 수 있다(이전 그룹 쫓기 검증: 제자리 수비 +1.01). 실력 지표로 쓰지 말고 수비 실력은 `Outcome`·`Fielded`·`Play/*`로 본다 |
 | `Defense Reward/Chase Shaping` | 수비가 결정한 플레이마다 | 3 | 수비수에게 지급한 개인 쫓기 보상의 플레이 합. 그룹 보상에는 포함하지 않는다. 할인 없는 합이므로 실력 지표로 쓰지 않는다 |
-| `Defense Reward/Position` | 수비가 결정한 플레이마다 | 3 | 아홉 수비수의 [역할 임무](fielding-agents.md#수비-9명역할-임무-보상-개편-2026-10-02) 지점(베이스 3 m, 투수·키스톤 구역 6 m, 외야 구역 12 m) 바깥 개인 감점 합. 공 처리 역할은 제외하며 수비수당 초당 최대 −0.1이다. 종료 정산으로 취소하지 않는다. 2026-10-02 이전 `Defense Reward/Infield Position`을 대신한다 |
+| `Defense Reward/Position` | 수비가 결정한 플레이마다 | 3 | 단순 수비에서는 0. 고정 네 명과 CF는 역할 자리 이탈 임무를 학습하지 않는다. 9명 구성 당시 값은 이전 기록에 있다 |
 | `Defense Reward/Fielding` | 수비가 결정한 플레이마다 | 3 | 처음 공을 잡은 수비수에게 준 개인 포구 보상(0 또는 0.3). 평균은 `Defense/Fielded` × 0.3이다 |
 | `Defense/Cover 1B`·`Cover 2B`·`Cover 3B`·`Cover Home` | 그 베이스로 진루·귀루 중인 주자가 있었던 수비 플레이마다 | 3 | 그 동안 어느 수비수든 베이스 반경 0.6 m 안에 들어간 비율. 2026-10-02부터 역할이 아니라 베이스 기준이다(이전 `Cover 2B (SS)`). 1루는 거의 모든 땅볼에서 기록된다 |
 | `Env/Aborted Play` | 초기화한 투구마다 | 전체 | 투구 거부·시간 초과로 중단한 비율. 0이 정상이다 |

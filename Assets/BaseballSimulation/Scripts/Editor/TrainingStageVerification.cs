@@ -48,11 +48,12 @@ namespace BaseballSimulation.Editor
                 foreach (BehaviorParameters behavior in behaviors) previous.Add(behavior.BehaviorType);
                 foreach (BehaviorParameters behavior in behaviors) behavior.BehaviorType = BehaviorType.HeuristicOnly;
                 BatterAgentVerification.FinishCurrentPlateAppearance(controller);
+                string stanceReport = VerifyFixedStance(controller) + "\n";
                 switch (controller.Stage)
                 {
-                    case TrainingStage.Batter: return RunStage1(controller);
-                    case TrainingStage.BatterPitcher: return RunStage2(controller);
-                    default: return RunStage3(controller);
+                    case TrainingStage.Batter: return stanceReport + RunStage1(controller) + "\n" + VerifyBatterLessons(controller) + "\n" + VerifyPreparation(controller) + "\n" + VerifySkills(controller);
+                    case TrainingStage.BatterPitcher: return stanceReport + RunStage2(controller);
+                    default: return stanceReport + (controller.Director.SimplifiedFielding ? RunSimplifiedStage3(controller) : RunStage3(controller));
                 }
             }
             finally
@@ -60,6 +61,48 @@ namespace BaseballSimulation.Editor
                 for (int i = 0; i < behaviors.Count; i++) behaviors[i].BehaviorType = previous[i];
                 Physics.simulationMode = previousPhysics;
             }
+        }
+
+        private static string VerifyFixedStance(TrainingEnvController controller)
+        {
+            var director = controller.Director;
+            var agent = controller.Batter;
+            var config = director.EnvironmentConfig;
+            int previousPhase = agent.PreparationPhase, previousSkill = agent.SkillPhase;
+            bool previousPrepared = agent.PreparedBatting;
+            Vector3 referencePosition = agent.transform.position;
+            try
+            {
+                for (int phase = 0; phase < BatterPreparation.PhaseCount; phase++)
+                {
+                    agent.ConfigurePreparation(phase, true);
+                    foreach (float sign in new[] { -1f, 1f })
+                    {
+                        agent.BeginPitch();
+                        agent.OnActionReceived(new ActionBuffers(
+                            new[] { sign, -sign, sign, sign, sign, sign, sign }, new[] { 0 }));
+                        BatterAgentVerification.Advance(director);
+                        var setup = director.GetBattingEvaluation().Setup;
+                        Require(setup.StanceOffset == Vector2.zero &&
+                            Vector3.Distance(agent.transform.position, referencePosition) < 1e-5f,
+                            $"body stays at its reference position at phase {phase}, action {sign}");
+                        float scale = BatterPreparation.ControlScale(phase);
+                        Require(Mathf.Abs(setup.GripOffset.x - sign * config.GripOffsetLimits.x * scale) < 1e-5f &&
+                            Mathf.Abs(setup.GripOffset.z - sign * config.GripOffsetLimits.z * scale) < 1e-5f,
+                            "bat-position controls remain active while body-position actions are ignored");
+                    }
+                }
+            }
+            finally
+            {
+                agent.ConfigurePreparation(previousPhase, previousPrepared);
+                if (previousSkill >= 0) agent.ConfigureSkills(previousSkill);
+                agent.BeginPitch();
+                agent.OnActionReceived(new ActionBuffers(new float[7], new[] { 0 }));
+                BatterAgentVerification.Advance(director);
+                BatterAgentVerification.FinishCurrentPlateAppearance(controller);
+            }
+            return "PASS fixed stance: all 16 preparation phases, both extreme body actions, unchanged root position and active bat-position controls.";
         }
 
         // ───────────────────────── 1단계 ─────────────────────────
@@ -171,6 +214,10 @@ namespace BaseballSimulation.Editor
                 RequireStat(controller, "Plate Appearance/Strikeout", lastWalk ? 0f : 1f);
                 RequireStat(controller, "Batter Reward/Outcome", lastWalk ? PlayOutcomeRewards.WalkValue : -PlayOutcomeRewards.StrikeoutValue);
                 RequireStat(controller, "Env/Aborted Play", 0f);
+                RequireStat(controller, "Batter Observation/Stack Count", BatterAgent.ImageStacks);
+                RequireStat(controller, "Batter Observation/Decision Interval (ms)", BatterAgent.DecisionIntervalSeconds * 1000f);
+                RequireStat(controller, "Batter Observation/History Span (ms)",
+                    (BatterAgent.ImageStacks - 1) * BatterAgent.DecisionIntervalSeconds * 1000f, 1e-3f);
                 float statKmh = Stat(controller, "Pitch/Speed (km/h)");
                 Require(statKmh >= range.x - 0.01f && statKmh <= range.y + 0.01f, $"speed stat {statKmh:F1} km/h inside {range}");
                 RequireNoStat(controller, "Pitch Type/Four Seam");
@@ -184,6 +231,362 @@ namespace BaseballSimulation.Editor
             finally
             {
                 director.PitchCalled -= OnCalled;
+            }
+        }
+
+        private static string VerifyPreparation(TrainingEnvController controller)
+        {
+            PlayDirector director = controller.Director;
+            BatterAgent agent = controller.Batter;
+            var config = director.EnvironmentConfig;
+            float center = director.StrikeZoneCenter.y - director.FieldLayout.PitchTargetPosition.y;
+            float limit = config.GripOffsetLimits.y;
+            float anchor = 0.5f * Mathf.Clamp(center, -limit, limit);
+            for (int phase = 0; phase < BatterPreparation.PhaseCount; phase++)
+            {
+                float scale = BatterPreparation.ControlScale(phase);
+                Require(Mathf.Abs(BatterPreparation.GripHeight(0f, limit, center, scale) - anchor) < 1e-6f,
+                    "preparation neutral grip stays fixed through every control expansion");
+                for (int i = -10; i <= 10; i++)
+                {
+                    float action = i / 10f;
+                    float height = BatterPreparation.GripHeight(action, limit, center, scale);
+                    Require(height >= -limit && height <= limit, "prepared controls respect legal grip limits");
+                    if (phase == 0) Require(Mathf.Abs(height - (action * limit * 0.5f + anchor)) < 1e-6f,
+                        "initial preparation exactly preserves saved lesson-2 grip semantics");
+                }
+            }
+            Require(BatterPreparation.SwingGate(0) == 0.30f && BatterPreparation.SwingGate(6) == 0f &&
+                BatterPreparation.ControlScale(0) == 0.5f && BatterPreparation.ControlScale(10) == 1f,
+                "gates are removed before full controls, without an abrupt lesson-2 to stage-2 jump");
+            Require(Mathf.Abs(BatterPreparation.GripHeight(-1f, limit, center, 1f) + limit) < 1e-6f &&
+                Mathf.Abs(BatterPreparation.GripHeight(1f, limit, center, 1f) - limit) < 1e-6f,
+                "full prepared controls reach both legal height endpoints");
+            var random = new System.Random(6371);
+            var types = new HashSet<PitchType>();
+            int easy = 0;
+            for (int i = 0; i < 2000; i++)
+            {
+                PitchCommand pitch = BatterPreparation.SamplePitch(15, random, config, director.StrikeZoneCenter, new Vector2(120f, 150f));
+                types.Add(pitch.Type);
+                if (pitch.Type == PitchType.FourSeam && pitch.PlateLocation == director.StrikeZoneCenter) easy++;
+            }
+            Require(types.Count == 5 && easy >= 400 && easy <= 600, "final preparation mixes all five pitches and retains 25% easy central fastballs");
+            int previous = controller.PreparationOverride;
+            try
+            {
+                controller.SetPreparationOverride(0);
+                for (int tick = 0; tick < 2000 && controller.PreparationPhase != 0; tick++) BatterAgentVerification.Step(director);
+                Require(controller.PreparationPhase == 0 && agent.PreparedBatting && agent.QualityRewardEnabled &&
+                    agent.TrainingControlScale == 0.5f && agent.EarliestSwingSeconds == 0.30f, "controller latches preparation on new PAs");
+                controller.SetPreparationOverride(15);
+                Require(controller.PreparationPhase == 0, "phase changes cannot alter the current PA");
+                for (int tick = 0; tick < 2000 && controller.PreparationPhase != 15; tick++) BatterAgentVerification.Step(director);
+                Require(controller.PreparationPhase == 15 && agent.TrainingControlScale == 1f && agent.EarliestSwingSeconds == 0f,
+                    "final phase removes all swing gates and enables full controls");
+                Require(controller.Stats.CountOf("Batter Preparation/Phase") > 0, "completed PAs publish preparation metrics");
+            }
+            finally { controller.SetPreparationOverride(previous); }
+            return "PASS preparation: saved lesson-2 mapping, invariant neutral height, legal full controls, gradual gates, five-pitch sampling, PA latching and metrics.";
+        }
+
+        private static string VerifySkills(TrainingEnvController controller)
+        {
+            var director = controller.Director;
+            var agent = controller.Batter;
+            var config = director.EnvironmentConfig;
+            int previous = controller.PreparationOverride;
+            float center = director.StrikeZoneCenter.y - director.FieldLayout.PitchTargetPosition.y;
+            var maximum = new ActionBuffers(new[] { 1f, 1f, 1f, 1f, 1f, 1f, 1f }, new[] { 1 });
+            int fair = 0, qualified = 0;
+            void StartSkill(int phase)
+            {
+                controller.SetPreparationOverride(0);
+                controller.SetSkillOverride(phase);
+                for (int tick = 0; tick < 4000 && controller.SkillPhase != phase; tick++) BatterAgentVerification.Step(director);
+                Require(controller.SkillPhase == phase && agent.SkillPhase == phase, "skills latch at a new PA");
+                BatterAgentVerification.FinishCurrentPlateAppearance(controller);
+            }
+            try
+            {
+                StartSkill(0);
+                for (int trial = 0; trial < 16; trial++)
+                {
+                    BatterAgentVerification.FinishCurrentPlateAppearance(controller);
+                    agent.OnActionReceived(maximum);
+                    BatterAgentVerification.Advance(director);
+                    var setup = director.GetBattingEvaluation().Setup;
+                    Require(setup.StanceOffset == Vector2.zero && setup.GripOffset.x == 0f && setup.GripOffset.z == 0f &&
+                        Mathf.Abs(setup.GripOffset.y - center) < 1e-5f, $"timing-only ignores all pose actions at the verified center height: {setup.StanceOffset}, {setup.GripOffset}, expected Y={center}");
+                    int completed = agent.CompletedPitches;
+                    bool swung = false;
+                    float offset = (trial % 8 - 3) * 0.01f;
+                    for (int tick = 0; tick < 2000 && agent.CompletedPitches == completed; tick++)
+                    {
+                        Unity.MLAgents.Academy.Instance.EnvironmentStep();
+                        if (!swung && director.State == PlayState.PitchInFlight &&
+                            director.GetSnapshot().ElapsedSeconds + Time.fixedDeltaTime >= director.PitchArrivalSeconds - 0.5f * config.SwingDuration + offset)
+                        {
+                            agent.OnActionReceived(maximum);
+                            swung = true;
+                        }
+                        BatterAgentVerification.Advance(director);
+                        if (swung && director.HasSwung) Require(Mathf.Abs(director.GetBattingEvaluation().SwingAngleErrorDegrees) < 1e-5f,
+                            "timing-only ignores both angle actions");
+                    }
+                    Require(agent.CompletedPitches == completed + 1, "timing-only physical pitch completes");
+                    if (agent.LastPitchReward.Contact > 0f)
+                    {
+                        var hit = director.GetBattedBallSnapshot();
+                        if (hit.Call == BattedBallCall.Fair || hit.Call == BattedBallCall.HomeRun || hit.Call == BattedBallCall.GroundRuleDouble)
+                        {
+                            fair++;
+                            bool solid = BatterAgent.IsQualifiedTrainingHit(director.ContactQuality, hit);
+                            if (solid) qualified++;
+                            Require(Mathf.Abs(agent.LastPitchAddedReward - BatterAgent.TrainingFairHitReward(director.ContactQuality, hit, true)) < 1e-4f &&
+                                Mathf.Abs(agent.LastPitchAddedReward - agent.LastPitchReward.Total - agent.LastPitchTrainingQualityReward) < 1e-4f,
+                                "timing-only physical contact receives progressive reward with one signed reconciliation");
+                            Require(solid ? agent.LastPitchAddedReward > 2.63f : agent.LastPitchAddedReward <= 1.5001f,
+                                "timing-only progress remains below the qualified-hit reward");
+                        }
+                    }
+                    Require(agent.LastPitchTrainingContactBonus == 0f, "skills do not restore the weak-contact bonus");
+                    BatterAgentVerification.Step(director);
+                }
+                Require(fair > 0 && qualified > 0, "fixed-pose central pitches physically support qualified hits");
+                Require(controller.Stats.CountOf("Batter Skills/Phase") > 0, "skill PA histogram is recorded");
+                StartSkill(9);
+                agent.OnActionReceived(maximum);
+                BatterAgentVerification.Advance(director);
+                var final = director.GetBattingEvaluation().Setup;
+                Require(final.StanceOffset == Vector2.zero &&
+                    Mathf.Abs(final.GripOffset.x - config.GripOffsetLimits.x * 0.5f) < 1e-5f &&
+                    Mathf.Abs(final.GripOffset.z - config.GripOffsetLimits.z * 0.5f) < 1e-5f &&
+                    Mathf.Abs(final.GripOffset.y - BatterPreparation.GripHeight(1f, config.GripOffsetLimits.y, center, 0.5f)) < 1e-5f,
+                    "last skill phase preserves bat setup while the body remains fixed");
+                var left = new System.Random(42);
+                var right = new System.Random(42);
+                for (int i = 0; i < 100; i++)
+                {
+                    var a = BatterPreparation.SamplePitch(0, left, config, director.StrikeZoneCenter, new Vector2(120f, 150f), 9);
+                    var b = BatterPreparation.SamplePitch(0, right, config, director.StrikeZoneCenter, new Vector2(120f, 150f));
+                    Require(a.Type == b.Type && a.Speed == b.Speed && a.PlateLocation == b.PlateLocation,
+                        "last skill phase preserves the legacy pitch sequence exactly");
+                }
+                for (int phase = 0; phase < BatterSkills.PhaseCount; phase++)
+                    for (int i = -10; i <= 10; i++)
+                    {
+                        float height = BatterSkills.GripHeight(i / 10f, config.GripOffsetLimits.y, center, phase);
+                        Require(height >= -config.GripOffsetLimits.y && height <= config.GripOffsetLimits.y, "all skill heights remain legal");
+                    }
+                return $"PASS skills: fixed pose/angles, {fair}/16 physical fair hits and {qualified}/16 qualified hits, PA metrics, legal heights, exact final setup/pitch handoff.";
+            }
+            finally { controller.SetSkillOverride(-1); controller.SetPreparationOverride(previous); }
+        }
+
+        private static string VerifyBatterLessons(TrainingEnvController controller)
+        {
+            PlayDirector director = controller.Director;
+            BatterAgent agent = controller.Batter;
+            BaseballEnvironmentConfig config = director.EnvironmentConfig;
+            int previous = controller.BatterLessonOverride;
+            var report = new StringBuilder();
+            void StartLesson(int lesson)
+            {
+                controller.SetBatterLessonOverride(lesson);
+                for (int tick = 0; tick < 2000 && controller.BatterLesson != lesson; tick++) BatterAgentVerification.Step(director);
+                Require(controller.BatterLesson == lesson, "lesson applied on a new plate appearance");
+                BatterAgentVerification.FinishCurrentPlateAppearance(controller);
+            }
+            try
+            {
+                StartLesson(0);
+                int before = agent.CompletedEpisodes;
+                for (int tick = 0; tick < 2000 && agent.CompletedEpisodes == before; tick++) BatterAgentVerification.Step(director);
+                Require(controller.LastPlateAppearanceResult == PlateAppearanceResult.Strikeout &&
+                    Mathf.Abs(agent.LastCompletedCumulativeReward + 4f) < 1e-4f && agent.LastPitchTrainingContactBonus == 0f,
+                    "taking center pitches earns no bonus and ends at -4, not a profitable walk policy");
+                report.AppendLine("PASS lesson 0: center pitches, no forced swing, taking three strikes yields -4 and no contact bonus.");
+
+                BatterAgentVerification.FinishCurrentPlateAppearance(controller);
+                agent.BeginPitch();
+                var maximum = new ActionBuffers(new[] { 1f, 1f, 1f, 1f, 1f, 1f, 1f }, new[] { 1 });
+                agent.OnActionReceived(maximum);
+                BatterAgentVerification.Advance(director);
+                BattingEvaluation setup = director.GetBattingEvaluation();
+                Require(setup.Setup.StanceOffset == Vector2.zero && Mathf.Abs(setup.Setup.GripOffset.y -
+                    (director.StrikeZoneCenter.y - director.FieldLayout.PitchTargetPosition.y)) < 1e-5f &&
+                    setup.Setup.GripOffset.x == 0f && setup.Setup.GripOffset.z == 0f, "lesson 0 ignores pose actions and centers the actual bat");
+                int pitches = agent.CompletedPitches;
+                bool earlyBlocked = false, afterEnabled = false, injected = false;
+                for (int tick = 0; tick < 2000 && agent.CompletedPitches == pitches; tick++)
+                {
+                    Unity.MLAgents.Academy.Instance.EnvironmentStep();
+                    if (director.State == PlayState.PitchInFlight && !director.HasSwung)
+                    {
+                        var mask = new MaskRecorder();
+                        agent.WriteDiscreteActionMask(mask);
+                        bool expectedAllowed = director.GetSnapshot().ElapsedSeconds >= BatterAgent.TrainingEarliestSwingSeconds;
+                        Require(mask.Enabled[1] == expectedAllowed && mask.Enabled[0], "only the premature swing is masked; taking stays available");
+                        if (!expectedAllowed)
+                        {
+                            agent.OnActionReceived(maximum);
+                            earlyBlocked = true;
+                        }
+                        else
+                        {
+                            afterEnabled = true;
+                            float phase = config.SwingStartDegrees / (config.SwingStartDegrees - config.SwingEndDegrees);
+                            if (!injected && director.GetSnapshot().ElapsedSeconds + Time.fixedDeltaTime >= director.PitchArrivalSeconds - phase * config.SwingDuration)
+                            {
+                                agent.OnActionReceived(maximum);
+                                injected = true;
+                            }
+                        }
+                    }
+                    bool forbidden = director.State == PlayState.PitchInFlight && director.GetSnapshot().ElapsedSeconds < BatterAgent.TrainingEarliestSwingSeconds;
+                    BatterAgentVerification.Advance(director);
+                    if (forbidden) Require(!director.HasSwung, "direct premature swing action is also rejected");
+                }
+                // 보상 계산기는 Director 단계에서 끝나고, 타석 종료·지표는 다음 Academy 단계에서 정산한다.
+                BatterAgentVerification.Step(director);
+                Require(earlyBlocked && afterEnabled && injected && agent.LastPitchReward.Contact == BatterRewardTracker.ContactReward &&
+                    agent.LastPitchTrainingContactBonus == BatterAgent.TrainingContactBonus,
+                    "real physical contact receives exactly one +1.5 training bonus");
+                Require(Mathf.Abs(agent.LastPitchAddedReward - agent.LastPitchReward.Total - agent.LastPitchTrainingContactBonus) < 1e-5f,
+                    "pitch total includes the bonus exactly once");
+                Require(Mathf.Abs(agent.LastCompletedCumulativeReward - agent.LastPlateAppearanceAddedReward - agent.LastOutcomeReward) < 1e-5f,
+                    "episode total contains pitch bonuses and outcome once");
+                RequireStat(controller, "Batter Reward/Training Contact Bonus", BatterAgent.TrainingContactBonus);
+                report.AppendLine("PASS lesson 0: frozen pose/angles, early-swing mask and command rejection, voluntary correctly timed contact +1.5 exactly once, pitch/episode/stats accounting.");
+
+                BatterAgentVerification.FinishCurrentPlateAppearance(controller);
+                BatterRewardTracker eventReplay = (BatterRewardTracker)typeof(BatterAgent).GetField("rewards",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(agent);
+                eventReplay.RecordContact();
+                eventReplay.RecordBattedBallCall(new BattedBallSnapshot(BattedBallCall.Foul, ExitVelocity(60f, 15f, 30f),
+                    0f, 1f, true, Vector3.forward, 1f));
+                float foulTotal = agent.LastPitchAddedReward;
+                eventReplay.RecordBattedBallCall(new BattedBallSnapshot(BattedBallCall.Foul, Vector3.forward, 0f, 0f, false, Vector3.zero, 0f));
+                Require(Mathf.Abs(foulTotal + 1f) < 1e-5f && agent.LastPitchTrainingContactBonus == 0f && agent.LastPitchAddedReward == foulTotal,
+                    "warm-up foul event replay revokes the bonus once and retains the base -1 total");
+                report.AppendLine("PASS lesson 0 foul reward replay: contact bonus revoked exactly once, net -1, repeated calls ignored.");
+                // Event replay did not advance the Director: explicitly restore its command lifecycle.
+                agent.AbortPlay();
+                director.RequestNewPlateAppearance();
+                director.RequestResetPlay();
+                BatterAgentVerification.Advance(director);
+
+                StartLesson(1);
+                Require(agent.TrainingControlScale == 0f, "solid-contact lesson retains the centered fixed pose");
+                int fairTrials = 0, qualifiedTrials = 0;
+                for (int trial = 0; trial < 16; trial++)
+                {
+                    BatterAgentVerification.FinishCurrentPlateAppearance(controller);
+                    agent.OnActionReceived(maximum);
+                    BatterAgentVerification.Advance(director);
+                    int completed = agent.CompletedPitches;
+                    bool swung = false;
+                    float offset = (trial % 8 - 3) * 0.01f;
+                    for (int tick = 0; tick < 2000 && agent.CompletedPitches == completed; tick++)
+                    {
+                        Unity.MLAgents.Academy.Instance.EnvironmentStep();
+                        if (!swung && director.State == PlayState.PitchInFlight)
+                        {
+                            float phase = config.SwingStartDegrees / (config.SwingStartDegrees - config.SwingEndDegrees);
+                            if (director.GetSnapshot().ElapsedSeconds + Time.fixedDeltaTime >=
+                                director.PitchArrivalSeconds - phase * config.SwingDuration + offset)
+                            {
+                                agent.OnActionReceived(maximum);
+                                swung = true;
+                            }
+                        }
+                        BatterAgentVerification.Advance(director);
+                    }
+                    Require(agent.CompletedPitches == completed + 1, "physical timing trial completed");
+                    BattedBallSnapshot hit = director.GetBattedBallSnapshot();
+                    bool fair = director.HasContact && (hit.Call == BattedBallCall.Fair ||
+                        hit.Call == BattedBallCall.HomeRun || hit.Call == BattedBallCall.GroundRuleDouble);
+                    float quality = director.ContactQuality;
+                    bool qualified = fair && BatterAgent.IsQualifiedTrainingHit(quality, hit);
+                    if (fair)
+                    {
+                        fairTrials++;
+                        if (qualified) qualifiedTrials++;
+                        Require(Mathf.Abs(agent.LastPitchAddedReward - BatterAgent.TrainingFairHitReward(quality, hit, agent.PreparedBatting)) < 1e-4f,
+                            "physical fair-hit total matches quality/speed/launch reward once");
+                        Require(qualified ? agent.LastPitchAddedReward > 2.6f : agent.LastPitchAddedReward <= (agent.PreparedBatting ? 1.5001f : 0.5001f),
+                            "weak hits cannot earn strong-hit reward");
+                    }
+                    Require(agent.LastPitchTrainingContactBonus == 0f, "warm-up bonus is absent from solid-contact lesson");
+                    Require(Mathf.Abs(agent.LastPitchAddedReward - agent.LastPitchReward.Total - agent.LastPitchTrainingQualityReward) < 1e-4f,
+                        "signed quality adjustment is included exactly once");
+                    BatterAgentVerification.Step(director);
+                    if (fair)
+                    {
+                        Require(agent.LastPlateAppearanceQualifiedHit == qualified, "qualified-hit PA includes physical contact only");
+                        RequireStat(controller, "Batter Training/Qualified Hit", qualified ? 1f : 0f);
+                        Require(Mathf.Abs(agent.LastCompletedCumulativeReward - agent.LastPlateAppearanceAddedReward - agent.LastOutcomeReward) < 1e-4f,
+                            "quality adjustment is present once in the completed episode");
+                    }
+                }
+                Require(fairTrials > 0 && qualifiedTrials > 0, $"centered timing can physically reach the strong-hit target ({fairTrials} fair, {qualifiedTrials} qualified)");
+                BattedBallSnapshot Sample(float kmh, float launch, BattedBallCall call = BattedBallCall.Fair) =>
+                    new BattedBallSnapshot(call, ExitVelocity(0f, launch, kmh / 3.6f), 0f, 1f, true, Vector3.forward, 1f);
+                Require(BatterAgent.TrainingFairHitReward(0.15f, Sample(61f, -22f)) == 0f, "observed short downward hit earns zero in quality lessons");
+                Require(BatterAgent.TrainingFairHitReward(0.59f, Sample(180f, 15f)) <= 0.5f &&
+                    BatterAgent.TrainingFairHitReward(0.9f, Sample(119f, 15f)) <= 0.5f &&
+                    BatterAgent.TrainingFairHitReward(0.9f, Sample(180f, 40f)) <= 0.5f, "all three quality/speed/launch requirements matter");
+                Require(BatterAgent.TrainingFairHitReward(0.9f, Sample(180f, 15f, BattedBallCall.Foul)) == 0f,
+                    "a fast foul is not a qualified fair hit");
+                float weakProgress = BatterAgent.TrainingFairHitReward(0.1f, Sample(60f, 15f), true);
+                float betterQuality = BatterAgent.TrainingFairHitReward(0.3f, Sample(60f, 15f), true);
+                float betterSpeed = BatterAgent.TrainingFairHitReward(0.3f, Sample(100f, 15f), true);
+                Require(Mathf.Abs(weakProgress - 0.5625f) < 1e-5f && weakProgress < betterQuality && betterQuality < betterSpeed,
+                    "prepared fair-hit progress provides meaningful increasing quality/speed feedback");
+                Require(BatterAgent.TrainingFairHitReward(0.3f, Sample(100f, 2.5f), true) < betterSpeed &&
+                    BatterAgent.TrainingFairHitReward(0.3f, Sample(100f, -1f), true) == 0f &&
+                    BatterAgent.TrainingFairHitReward(0.9f, Sample(180f, 15f, BattedBallCall.Foul), true) == 0f,
+                    "progressive reward still requires fair contact and rewards productive launch angles");
+                Require(BatterAgent.TrainingFairHitReward(0.59f, Sample(180f, 15f), true) <= 1.5f &&
+                    BatterAgent.TrainingFairHitReward(0.9f, Sample(119f, 15f), true) <= 1.5f &&
+                    BatterAgent.TrainingFairHitReward(0.9f, Sample(180f, 40f), true) <= 1.5f &&
+                    !BatterAgent.IsQualifiedTrainingHit(0.59f, Sample(180f, 15f)) &&
+                    !BatterAgent.IsQualifiedTrainingHit(0.9f, Sample(119f, 15f)) &&
+                    !BatterAgent.IsQualifiedTrainingHit(0.9f, Sample(180f, 40f)),
+                    "progress reward cannot substitute for the unchanged qualified-hit gate");
+                Require(BatterAgent.TrainingFairHitReward(0.6f, Sample(120f, 15f), true) > 2.63f &&
+                    BatterAgent.TrainingFairHitReward(0.9f, Sample(180f, 15f, BattedBallCall.HomeRun), true) ==
+                    BatterAgent.TrainingFairHitReward(0.9f, Sample(180f, 15f, BattedBallCall.HomeRun)),
+                    "qualified-hit and home-run rewards remain unchanged");
+                report.AppendLine("PASS progressive fair reward: increasing quality/speed/launch feedback, incomplete <=1.5, qualified >=2.63, foul/downward zero; legacy reward preserved.");
+                report.AppendLine($"PASS lesson 1: {fairTrials} physical fair hits, {qualifiedTrials} strong hits; weak reward <=0.5, strong >=2.63, signed pitch/PA/stats accounting, negative-angle and foul rejection.");
+
+                StartLesson(2);
+                agent.BeginPitch();
+                agent.OnActionReceived(maximum);
+                BatterAgentVerification.Advance(director);
+                setup = director.GetBattingEvaluation();
+                Require(setup.Setup.StanceOffset == Vector2.zero &&
+                    Mathf.Abs(setup.Setup.GripOffset.x - config.GripOffsetLimits.x * 0.5f) < 1e-5f, "lesson 2 keeps the body fixed and halves bat control range");
+                var aims = new List<Vector2>();
+                void OnPitch(PitchCall call) { aims.Add(director.GetPitchCall().AimLocation); }
+                director.PitchCalled += OnPitch;
+                try
+                {
+                    for (int tick = 0; tick < 6000 && aims.Count < 24; tick++) BatterAgentVerification.Step(director);
+                }
+                finally { director.PitchCalled -= OnPitch; }
+                Require(aims.Count >= 24 && aims.Any(aim => Vector2.Distance(aim, director.StrikeZoneCenter) > 0.05f), "lesson 2 varies pitch locations");
+                report.AppendLine("PASS lesson 2: half pose/angle range, narrow varying pitch locations and unchanged 120-150 km/h control.");
+                StartLesson(3);
+                Require(agent.TrainingControlScale == 1f, "lesson 3 restores all controls");
+                StartLesson(-1); // handled below: override -1 reads the absent parameter in isolated verification
+                return report.ToString();
+            }
+            finally
+            {
+                controller.SetBatterLessonOverride(previous);
             }
         }
 
@@ -460,6 +863,7 @@ namespace BaseballSimulation.Editor
         private static string RunStage3(TrainingEnvController controller)
         {
             PlayDirector director = controller.Director;
+            int abortedAtStart = controller.AbortedPlays;
             Require(controller.Runners.Length == 4 && director.RunnerSlotCount == 4, "four runner slots (batter-runner + three base runners)");
             foreach (RunnerAgent runner in controller.Runners) Require(runner.enabled, $"runner {runner.name} passed its checks");
             Require(controller.Fielders.Length == FielderAgent.RoleCount && director.FielderCount == FielderAgent.RoleCount, "nine fielders wired to the director");
@@ -468,7 +872,7 @@ namespace BaseballSimulation.Editor
             foreach (FielderAgent fielder in controller.Fielders)
                 Require(fielder.enabled && director.GetFielder(fielder.FielderIndex) == fielder.GetComponent<FielderController>(), $"fielder {fielder.name} passed its checks");
             var report = new StringBuilder();
-            Require(controller.AbortedPlays == 0, "no aborted plays before scenarios");
+            Require(controller.AbortedPlays == abortedAtStart, "no aborted plays before scenarios");
             throwsChecked = 0;
             throwMaskOpen = 0;
 
@@ -644,13 +1048,224 @@ namespace BaseballSimulation.Editor
             RequireOutcomeRewards(controller);
             report.AppendLine($"PASS K pop-up, runner must retouch: {Describe(k.play)}, then {Describe(k.situation)}, caught by {k.fielder}.");
 
-            Require(controller.AbortedPlays == 0, "no aborted plays");
+            Require(controller.AbortedPlays == abortedAtStart, "no aborted plays");
             RequireStat(controller, "Env/Aborted Play", 0f);
             Require(throwsChecked > 0 && throwMaskOpen > 0, "scenarios include throws and decisions with the throw options open");
             report.AppendLine($"PASS throw mask: throw options masked at every fielder decision except {throwMaskOpen} ball-holder decisions; " +
                 $"{throwsChecked} scripted throws went out from the holder.");
             report.AppendLine($"PASS stage 3 TensorBoard stats: play, plate-appearance and half-inning values match the scenarios ({controller.Stats.RecordCount} values).");
             return report.ToString();
+        }
+
+        private static string RunSimplifiedStage3(TrainingEnvController controller)
+        {
+            PlayDirector director = controller.Director;
+            int abortedAtStart = controller.AbortedPlays;
+            Require(controller.enabled && director.FielderCount == 5 && controller.Fielders.Length == 1, "five bodies and one learning fielder");
+            FielderAgent agent = controller.Fielders[0];
+            int cf = director.FindFielder(FielderRole.CenterField);
+            Require(agent.enabled && agent.FielderIndex == cf && agent.ThrowActionCount == 3, "center fielder uses three throw destinations");
+            foreach (FielderRole removed in new[] { FielderRole.Pitcher, FielderRole.Shortstop, FielderRole.LeftField, FielderRole.RightField })
+                Require(director.FindFielder(removed) < 0, $"no {removed} fielding body");
+            for (int i = 0; i < director.FielderCount; i++)
+            {
+                FielderController body = director.GetFielder(i);
+                Require(body.MovementLocked == (i != cf), $"{body.Role} movement lock");
+                if (i == cf) continue;
+                Require(body.GetComponent<FielderAgent>() == null && body.GetComponent<BehaviorParameters>() == null, "fixed bodies have no learning policy");
+                Vector3 spot = body.HomeSpot;
+                if (body.Role != FielderRole.Catcher)
+                    Require(Vector3.Distance(spot, director.FieldLayout.GetBasePosition((BaseId)((int)body.Role - 1))) < 1e-4f, "infielder stands on its base");
+                body.transform.position += new Vector3(2f, 0f, 3f);
+                body.SetMoveCommand(Vector2.one);
+                body.Tick(1f, director.EnvironmentConfig, director.FieldLayout.HomePosition);
+                Require(Vector3.Distance(body.Position, spot) < 1e-5f && body.Velocity == Vector3.zero, "locked body restores its position and rejects direct movement");
+            }
+            var fielderSensor = new Unity.MLAgents.Sensors.VectorSensor(FielderAgent.ObservationSize);
+            agent.CollectObservations(fielderSensor);
+            RequireVectorObservations(fielderSensor, 77);
+            foreach (RunnerAgent runner in controller.Runners)
+            {
+                var sensor = new Unity.MLAgents.Sensors.VectorSensor(RunnerAgent.ObservationSize);
+                runner.CollectObservations(sensor);
+                RequireVectorObservations(sensor, RunnerAgent.ObservationSize);
+            }
+            var report = new StringBuilder();
+            report.AppendLine("PASS simplified layout: C/1B/2B/3B pinned, CF only Agent, removed P/SS/LF/RF, finite role-based vectors 77/65.");
+            int caught = 0, delivered = 0, immediate = 0;
+            bool forceOut = false;
+            for (int choice = 0; choice < 3; choice++)
+            {
+                SetSituation(controller, new Situation(choice >= 1, choice >= 2, false, 0));
+                director.RequestScriptedBattedBall(ExitVelocity(18f, -30f, 20f));
+                BatterAgentVerification.Advance(director);
+                Require(director.State == PlayState.BattedBallInFlight, "grounder begins");
+                // A short grounder lets CF field before the batter reaches first, exercising a real force out.
+                director.GetFielder(cf).transform.position = director.FieldLayout.HomePosition + new Vector3(1.6f, 0f, 5f);
+                bool sawCatch = false, sawThrow = false, sawReceiver = false;
+                Vector3 stopped = Vector3.zero;
+                int stepsBeforeCatch = -1;
+                int before = controller.CompletedPlays;
+                for (int tick = 0; tick < 1500 && controller.CompletedPlays == before; tick++)
+                {
+                    bool holding = director.CanThrow(cf);
+                    int decisionsBefore = agent.StepCount;
+                    Unity.MLAgents.Academy.Instance.EnvironmentStep();
+                    if (holding)
+                    {
+                        Require(agent.StepCount > decisionsBefore, "catch triggers a fresh decision on the next Academy step");
+                        Require(agent.StepCount > stepsBeforeCatch, "throw decision uses post-catch observation");
+                        immediate++;
+                        // Override the neutral heuristic through the actual action boundary to test all destinations.
+                        agent.OnActionReceived(new ActionBuffers(new ActionSegment<float>(new[] { 1f, 1f }),
+                            new ActionSegment<int>(new[] { choice })));
+                        director.RequestFielderThrow(cf, ThrowTarget.Home); // rejected without replacing the valid throw
+                    }
+                    else if (!director.BattedBallFielded)
+                    {
+                        Vector3 ball = director.GetSnapshot().BallPosition;
+                        Vector3 delta = ball - director.GetFielder(cf).Position;
+                        agent.OnActionReceived(new ActionBuffers(new ActionSegment<float>(new[] { delta.x, delta.z }),
+                            new ActionSegment<int>(new[] { choice })));
+                    }
+                    for (int i = 0; i < director.FielderCount; i++)
+                        if (i != cf) director.RequestFielderMove(i, Vector2.one);
+                    BatterAgentVerification.Advance(director);
+                    for (int i = 0; i < director.FielderCount; i++)
+                        if (i != cf) Require(director.GetFielder(i).Position == director.GetFielder(i).HomeSpot, "commanded fixed fielder stays pinned during live play");
+                    if (!sawCatch && director.BallHolder == cf)
+                    {
+                        sawCatch = true; caught++;
+                        stopped = director.GetFielder(cf).Position;
+                        stepsBeforeCatch = agent.StepCount;
+                        Require(director.GetFielder(cf).Velocity == Vector3.zero, "CF stops immediately on catch");
+                    }
+                    if (sawCatch)
+                        Require(Vector3.Distance(director.GetFielder(cf).Position, stopped) < 1e-5f || director.State == PlayState.Ready, "CF cannot carry or chase after catch");
+                    if (director.LastThrower == cf)
+                    {
+                        sawThrow = true;
+                        Require(director.LastThrowTarget == (ThrowTarget)(choice + 1), "action 0/1/2 selects first/second/third; home rejected");
+                    }
+                    if (sawThrow && director.BallHolder >= 0)
+                    {
+                        int recipient = director.FindFielder((FielderRole)(choice + (int)FielderRole.FirstBase));
+                        Require(director.BallHolder == recipient && !director.CanThrow(recipient), "only selected base receives; receiver cannot relay");
+                        director.RequestFielderThrow(recipient, ThrowTarget.Home);
+                        if (!sawReceiver) { delivered++; sawReceiver = true; }
+                    }
+                }
+                Require(sawCatch && sawThrow && sawReceiver && controller.CompletedPlays == before + 1,
+                    $"throw {choice + 1} completes a live play (catch {sawCatch}, throw {sawThrow}, receiver {sawReceiver}, " +
+                    $"completed {controller.CompletedPlays - before}, {Describe(controller.LastPlaySummary)}, {director.GetSnapshot().LastRejectionReason})");
+                Require(controller.LastPlaySummary.Resolved && controller.LastPlayHadFielding, "play resolved after actual catch and flight");
+                RequireOutcomeRewards(controller);
+                Require(controller.LastPositionReward == 0f && controller.GetLastCoverShapingReward(0) == 0f, "no impossible cover/position duties for CF");
+                Require(controller.LastFieldingReward == PlayOutcomeRewards.FieldingReward, "first CF catch gets fielding bonus");
+                forceOut |= controller.LastPlaySummary.EndReason == PitchEndReason.ForceOut;
+                report.AppendLine($"PASS CF -> {(BaseId)(choice + 1)}: {Describe(controller.LastPlaySummary)}, immediate decision, physical reception, no carry/relay/home.");
+                BatterAgentVerification.FinishCurrentPlateAppearance(controller);
+                Require(director.LastThrower == -1 && director.LastThrowTarget == ThrowTarget.None, "throw state reset");
+                for (int i = 0; i < director.FielderCount; i++)
+                    Require(director.GetFielder(i).Position == director.GetFielder(i).HomeSpot && director.GetFielder(i).Velocity == Vector3.zero, "all bodies reset");
+            }
+            Require(caught == 3 && delivered == 3 && immediate == 3 && forceOut, "all three immediate throws and first-base force out verified");
+            SetSituation(controller, new Situation(false, false, false, 0));
+            Require(director.GetFielder(cf).Position == director.GetFielder(cf).HomeSpot, "outfield chase starts from normal CF home spot");
+            director.RequestScriptedBattedBall(ExitVelocity(SingleSprayDegrees, SingleLaunchDegrees, SingleSpeed));
+            BatterAgentVerification.Advance(director);
+            int outfieldBefore = controller.CompletedPlays;
+            bool outfieldCaught = false;
+            bool outfieldThrown = false, outfieldReceived = false;
+            string outfieldRejection = string.Empty;
+            Vector3 outfieldThrowSpot = Vector3.zero;
+            float distanceMoved = 0f;
+            for (int tick = 0; tick < 1500 && controller.CompletedPlays == outfieldBefore; tick++)
+            {
+                if (director.CanThrow(cf)) outfieldThrowSpot = director.GetFielder(cf).Position;
+                Unity.MLAgents.Academy.Instance.EnvironmentStep();
+                if (!director.BattedBallFielded)
+                {
+                    PitchSnapshot pitch = director.GetSnapshot();
+                    Vector3 delta = PredictChasePoint(pitch.BallPosition, pitch.BallVelocity) - director.GetFielder(cf).Position;
+                    director.RequestFielderMove(cf, new Vector2(delta.x, delta.z));
+                }
+                BatterAgentVerification.Advance(director);
+                distanceMoved = Mathf.Max(distanceMoved, Vector3.Distance(director.GetFielder(cf).Position, director.GetFielder(cf).HomeSpot));
+                outfieldCaught |= director.BallHolder == cf;
+                outfieldThrown |= director.LastThrower == cf;
+                outfieldReceived |= director.LastThrower == cf && director.BallHolder == director.FindFielder(FielderRole.FirstBase);
+                if (!string.IsNullOrEmpty(director.GetSnapshot().LastRejectionReason)) outfieldRejection = director.GetSnapshot().LastRejectionReason;
+            }
+            Require(outfieldCaught && outfieldThrown && outfieldReceived && distanceMoved > 10f && controller.CompletedPlays == outfieldBefore + 1 &&
+                controller.LastPlaySummary.EndReason == PitchEndReason.RunnerSafe,
+                $"CF chases from 80 m and resolves an outfield hit (caught {outfieldCaught}, threw {outfieldThrown}, received {outfieldReceived}, " +
+                $"throw spot {outfieldThrowSpot}, moved {distanceMoved:F1} m, {Describe(controller.LastPlaySummary)}, {outfieldRejection})");
+            RequireOutcomeRewards(controller);
+            report.AppendLine($"PASS outfield chase: CF starts at 80 m, moves {distanceMoved:F1} m, fields and throws; {Describe(controller.LastPlaySummary)}.");
+            // With no remaining runner, an airborne catch ends the play before a throw decision is needed.
+            SetSituation(controller, new Situation(false, false, false, 0));
+            director.RequestScriptedBattedBall(ExitVelocity(0f, 65f, 12f));
+            BatterAgentVerification.Advance(director);
+            Vector3 flyBall = director.GetSnapshot().BallPosition;
+            director.GetFielder(cf).transform.position = new Vector3(flyBall.x, director.FieldLayout.HomePosition.y, flyBall.z);
+            int flyBefore = controller.CompletedPlays;
+            for (int tick = 0; tick < 1500 && controller.CompletedPlays == flyBefore; tick++)
+            {
+                Unity.MLAgents.Academy.Instance.EnvironmentStep();
+                if (!director.BattedBallFielded)
+                {
+                    Vector3 delta = director.GetSnapshot().BallPosition - director.GetFielder(cf).Position;
+                    director.RequestFielderMove(cf, new Vector2(delta.x, delta.z));
+                }
+                BatterAgentVerification.Advance(director);
+            }
+            Require(controller.CompletedPlays == flyBefore + 1 && controller.LastPlaySummary.EndReason == PitchEndReason.FlyOut,
+                $"fly catch still ends play with no remaining runner ({Describe(controller.LastPlaySummary)})");
+            RequireOutcomeRewards(controller);
+            Require(controller.AbortedPlays == abortedAtStart, "no aborted plays");
+            report.AppendLine("PASS airborne catch, outcome rewards, fixed-position commands, CF movement/stop, three complete resets and no aborted plays.");
+            SetSituation(controller, new Situation(false, false, true, 1));
+            SituationSnapshot original = director.GetSituation();
+            int abortedBefore = controller.AbortedPlays;
+            int timeoutBefore = controller.CompletedPlays;
+            int resultStatsBefore = controller.Stats.CountOf("Play/Batter Bases");
+            // Aim away from the pinned second baseman; straight rolling hits are validly fielded on 2B.
+            director.RequestScriptedBattedBall(ExitVelocity(18f, -24f, 66f / 3.6f));
+            BatterAgentVerification.Advance(director);
+            bool summaryOnTimeout = false, runnerReachedBase = false;
+            for (int tick = 0; tick < 2000 && controller.CompletedPlays == timeoutBefore; tick++)
+            {
+                Unity.MLAgents.Academy.Instance.EnvironmentStep();
+                BatterAgentVerification.Advance(director);
+                RunnerSnapshot runner = director.GetRunnerSnapshot(0);
+                runnerReachedBase |= runner.LastTouchedBase == BaseId.First;
+                if (director.GetSnapshot().EndReason == PitchEndReason.Timeout)
+                    summaryOnTimeout |= director.TryGetPlaySummary(out _);
+            }
+            Require(controller.CompletedPlays == timeoutBefore + 1 && controller.AbortedPlays == abortedBefore + 1 &&
+                controller.LastEndReason == PitchEndReason.Timeout && runnerReachedBase,
+                $"unfielded weak grounder reaches a base then times out as an interruption (completed {controller.CompletedPlays - timeoutBefore}, aborted {controller.AbortedPlays - abortedBefore}, {controller.LastEndReason}, reached {runnerReachedBase}, {Describe(controller.LastPlaySummary)})");
+            Require(!summaryOnTimeout && !controller.LastPlaySummary.Resolved && controller.LastBatterOutcomeReward == 0f &&
+                controller.LastDefenseOutcomeReward == 0f && controller.LastRunnerOutcomeReward == 0f,
+                "timeout cannot resolve runner positions into base/outcome rewards");
+            Require(controller.Stats.CountOf("Play/Batter Bases") == resultStatsBefore, "timeout cannot contaminate completed-play statistics");
+            RequireStat(controller, "Env/Fielding Timeout", 1f);
+            RequireStat(controller, "Env/Aborted Play", 1f);
+            BatterAgentVerification.FinishCurrentPlateAppearance(controller);
+            SituationSnapshot reset = director.GetSituation();
+            Require(reset.OnFirst == original.OnFirst && reset.OnSecond == original.OnSecond && reset.OnThird == original.OnThird &&
+                reset.Outs == original.Outs && reset.RunsThisHalfInning == original.RunsThisHalfInning,
+                "timeout reset restores pre-play bases, outs and runs");
+            report.AppendLine("PASS weak-hit timeout: reached base is not committed, no outcome reward/completed-play stats, groups interrupted, original situation restored.");
+            return report.ToString();
+        }
+
+        private static void RequireVectorObservations(Unity.MLAgents.Sensors.VectorSensor sensor, int size)
+        {
+            var values = (List<float>)typeof(Unity.MLAgents.Sensors.VectorSensor).GetField("m_Observations",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(sensor);
+            Require(values.Count == size && values.All(value => !float.IsNaN(value) && !float.IsInfinity(value)), $"finite vector with exactly {size} observations");
         }
 
         private readonly struct Situation
@@ -1355,10 +1970,10 @@ namespace BaseballSimulation.Editor
             return value;
         }
 
-        private static void RequireStat(TrainingEnvController controller, string key, float expected)
+        private static void RequireStat(TrainingEnvController controller, string key, float expected, float tolerance = 1e-4f)
         {
             float value = Stat(controller, key);
-            Require(Mathf.Abs(value - expected) < 1e-4f, $"TensorBoard stat '{key}' = {expected} (got {value})");
+            Require(Mathf.Abs(value - expected) < tolerance, $"TensorBoard stat '{key}' = {expected} (got {value})");
         }
 
         private static void RequireNoStat(TrainingEnvController controller, string key) =>

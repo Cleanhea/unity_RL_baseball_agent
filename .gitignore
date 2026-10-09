@@ -110,3 +110,13 @@ InitTestScene*.unity*
 /Training/mlagents_extensions/*.egg-info/
 /Training/mlagents_extensions/build/
 /Training/mlagents_extensions/**/__pycache__/
+
+# Training outputs: checkpoints (.pt up to ~170MB), builds, logs, profiler captures
+/Training/results/
+/Training/resul/
+/Training/builds/
+/Training/evaluations/
+/Training/initialization/
+/ProfilerCaptures/
+*.pt
+events.out.tfevents.*

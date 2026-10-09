@@ -95,6 +95,7 @@ namespace BaseballSimulation
         {
             if (director == null || director.FielderCount == 0) return 0f;
             float potential = director.BattedBallFielded ? DefenseFieldedValue : 0f;
+            if (director.SimplifiedFielding) return potential;
             FieldLayout field = director.FieldLayout;
             for (int slot = 0; slot < director.RunnerSlotCount; slot++)
             {
@@ -124,6 +125,7 @@ namespace BaseballSimulation
         public static int DefenseChaser(PlayDirector director)
         {
             if (director == null || director.FielderCount == 0 || director.BattedBallFielded) return -1;
+            if (director.SimplifiedFielding) return director.FindFielder(FielderRole.CenterField);
             return NearestFielder(director, ChasePoint(director), out _);
         }
 
@@ -136,7 +138,8 @@ namespace BaseballSimulation
         {
             if (director == null || fielderIndex < 0 || fielderIndex >= director.FielderCount || director.BattedBallFielded) return 0f;
             Vector3 point = ChasePoint(director);
-            int chaser = NearestFielder(director, point, out float distance);
+            int chaser = DefenseChaser(director);
+            float distance = HorizontalDistance(director.GetFielder(fielderIndex).Position, point);
             return chaser == fielderIndex ? -DefenseChasePerMeter * distance : 0f;
         }
 
@@ -155,6 +158,7 @@ namespace BaseballSimulation
         {
             duty = default;
             if (director == null || fielderIndex < 0 || fielderIndex >= director.FielderCount) return false;
+            if (director.SimplifiedFielding) return false; // 고정 수신자 커버·자리 유지 임무를 학습하지 않는다.
             int chaser = DefenseChaser(director);
             if (IsBusy(director, fielderIndex, chaser)) return false;
             FielderController body = director.GetFielder(fielderIndex);

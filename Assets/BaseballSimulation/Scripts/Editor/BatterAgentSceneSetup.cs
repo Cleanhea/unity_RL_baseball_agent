@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Policies;
@@ -7,22 +6,19 @@ using Unity.MLAgents.Sensors;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace BaseballSimulation.Editor
 {
     public static class BatterAgentSceneSetup
     {
-        public const string EyeName = "BallEye";
-        private const float DefaultEyeHeight = 1.65f;
-        private const int RaysPerDirection = 25;
-        private const float SphereCastRadius = 0.25f;
-        private const int ObservationStacks = 3;
-        private const float FanMarginDegrees = 12f;
+        public const string EyeName = "CatcherEye";
+        public const string CameraName = "BatterCatcherCamera";
 
         /// <summary>
         /// Director가 참조하는 타자 루트에 Agent를 붙인다. 자식 센서(UseChildSensors)가 타자 몸을 따라 수집되게 한다.
         /// 이전 배치(별도 BatterAgent 오브젝트)가 있으면 지우고 타자 루트로 옮긴다. 관측 계약은 매번 다시 맞추고,
-        /// 공 태그와 공을 보는 레이 센서(BallEye)는 없을 때만 만든다. 결정은 TrainingEnvController가 요청하므로
+        /// 기존 BallEye 레이를 포수 시점 카메라로 전환한다. 결정은 TrainingEnvController가 요청하므로
         /// Decision Requester는 두지 않고, 남아 있으면 지운다.
         /// </summary>
         [MenuItem("Tools/Baseball Simulation/Add Batter ML-Agent To Current Scene")]
@@ -64,6 +60,8 @@ namespace BaseballSimulation.Editor
             behavior.BrainParameters.VectorObservationSize = BatterAgent.ObservationSize;
             behavior.BrainParameters.NumStackedVectorObservations = 1;
             behavior.BrainParameters.ActionSpec = new ActionSpec(BatterAgent.ContinuousActionCount, new[] { 2 });
+            if (root.GetComponentInChildren<RayPerceptionSensorComponent3D>(true) != null)
+                behavior.Model = null; // 레이 정책은 카메라 관측과 호환되지 않는다.
 
             DecisionRequester requester = root.GetComponent<DecisionRequester>();
             if (requester != null) Undo.DestroyObjectImmediate(requester);
@@ -75,8 +73,7 @@ namespace BaseballSimulation.Editor
                 ball.gameObject.tag = BatterAgent.BallTag;
                 EditorUtility.SetDirty(ball.gameObject);
             }
-            if (root.GetComponentInChildren<RayPerceptionSensorComponent3D>(true) == null)
-                AddEye(root.transform, field);
+            ConfigureEye(root.transform, field);
 
             EditorUtility.SetDirty(agent);
             EditorUtility.SetDirty(behavior);
@@ -95,7 +92,16 @@ namespace BaseballSimulation.Editor
                 GameObject root = agent.gameObject;
                 foreach (RayPerceptionSensorComponent3D eye in root.GetComponentsInChildren<RayPerceptionSensorComponent3D>(true))
                 {
-                    if (eye.gameObject.name == EyeName && eye.gameObject != root) Undo.DestroyObjectImmediate(eye.gameObject);
+                    if (eye.gameObject.name == "BallEye" && eye.gameObject != root && eye.GetComponents<Component>().Length == 2)
+                        Undo.DestroyObjectImmediate(eye.gameObject);
+                    else Undo.DestroyObjectImmediate(eye);
+                }
+                foreach (CameraSensorComponent eye in root.GetComponentsInChildren<CameraSensorComponent>(true))
+                {
+                    if (eye.Camera != null && eye.Camera.name == CameraName)
+                        Undo.DestroyObjectImmediate(eye.Camera.gameObject);
+                    if (eye.gameObject.name == EyeName && eye.gameObject != root && eye.GetComponents<Component>().Length == 2)
+                        Undo.DestroyObjectImmediate(eye.gameObject);
                     else Undo.DestroyObjectImmediate(eye);
                 }
                 // Decision Requester가 Agent에, Agent가 Behavior Parameters에 의존하므로 이 순서로 지운다.
@@ -111,36 +117,107 @@ namespace BaseballSimulation.Editor
         }
 
         /// <summary>
-        /// 머리 높이에 레이 부채꼴을 둔다. 부채꼴 평면은 눈·발사 지점·투구 목표를 지나도록 기울여
-        /// 한 평면의 레이로 발사부터 홈 통과까지 공 경로를 따라가게 한다.
+        /// 센서는 Agent의 자식, 카메라는 경기장의 Field 자식이다. 자세·스윙·주루와 관계없이 포수 시점을 유지한다.
         /// </summary>
-        private static void AddEye(Transform root, FieldLayout field)
+        internal static void ConfigureEye(Transform root, FieldLayout field)
         {
-            Transform head = root.Find("Head");
+            EnsureSensorBallLayer();
+            foreach (RayPerceptionSensorComponent3D ray in root.GetComponentsInChildren<RayPerceptionSensorComponent3D>(true))
+            {
+                if (ray.gameObject.name == "BallEye" && ray.GetComponents<Component>().Length == 2)
+                    Undo.DestroyObjectImmediate(ray.gameObject);
+                else Undo.DestroyObjectImmediate(ray);
+            }
+            CameraSensorComponent sensor = root.GetComponentInChildren<CameraSensorComponent>(true);
+            if (sensor != null)
+            {
+                bool changed = sensor.Width != BatterAgent.ImageWidth || sensor.Height != BatterAgent.ImageHeight ||
+                    !sensor.Grayscale || sensor.ObservationStacks != BatterAgent.ImageStacks;
+                if (changed)
+                {
+                    Undo.RecordObject(sensor, "Update batter visual observation contract");
+                    sensor.Width = BatterAgent.ImageWidth;
+                    sensor.Height = BatterAgent.ImageHeight;
+                    sensor.Grayscale = true;
+                    sensor.ObservationStacks = BatterAgent.ImageStacks;
+                    EditorUtility.SetDirty(sensor);
+                    BehaviorParameters behavior = root.GetComponent<BehaviorParameters>();
+                    Undo.RecordObject(behavior, "Clear incompatible batter camera model");
+                    behavior.Model = null;
+                    EditorUtility.SetDirty(behavior);
+                }
+                ConfigureBallOnlyView(sensor.Camera, field);
+                return; // 카메라 위치와 FOV 등 Inspector에서 조정한 값은 보존한다.
+            }
             var eye = new GameObject(EyeName);
-            Undo.RegisterCreatedObjectUndo(eye, "Add batter ball eye");
+            Undo.RegisterCreatedObjectUndo(eye, "Add batter catcher eye");
             eye.transform.SetParent(root, false);
-            eye.transform.localPosition = head != null ? head.localPosition : new Vector3(0f, DefaultEyeHeight, 0f);
-
-            Vector3 origin = eye.transform.position;
-            Vector3 toRelease = field.PitchOriginPosition - origin;
-            Vector3 toTarget = field.PitchTargetPosition - origin;
-            Vector3 normal = Vector3.Cross(toTarget, toRelease).normalized;
-            if (normal.y < 0f) normal = -normal;
-            Vector3 forward = (toRelease.normalized + toTarget.normalized).normalized;
-            eye.transform.rotation = Quaternion.LookRotation(forward, normal);
-
-            RayPerceptionSensorComponent3D sensor = eye.AddComponent<RayPerceptionSensorComponent3D>();
-            sensor.SensorName = "BallEye";
-            sensor.DetectableTags = new List<string> { BatterAgent.BallTag };
-            sensor.RaysPerDirection = RaysPerDirection;
-            sensor.MaxRayDegrees = Mathf.Min(90f, 0.5f * Vector3.Angle(toRelease, toTarget) + FanMarginDegrees);
-            sensor.SphereCastRadius = SphereCastRadius;
-            sensor.RayLength = toRelease.magnitude + 3f;
-            sensor.ObservationStacks = ObservationStacks;
-            sensor.StartVerticalOffset = 0f;
-            sensor.EndVerticalOffset = 0f;
+            var cameraObject = new GameObject(CameraName);
+            Undo.RegisterCreatedObjectUndo(cameraObject, "Add catcher observation camera");
+            cameraObject.transform.SetParent(field.transform, false);
+            // 3단계 포수 몸(z=-1.6)의 앞에서 본다. 몸이 렌즈를 가리지 않는 낮은 포수 시점이다.
+            Vector3 position = field.HomePosition + new Vector3(0f, 0.85f, -1.2f);
+            float zoneCenter = 0.5f * (field.Config.StrikeZoneBottom + field.Config.StrikeZoneTop);
+            Vector3 target = new Vector3(field.HomePosition.x, field.HomePosition.y + zoneCenter, field.PitchTargetPosition.z);
+            cameraObject.transform.SetPositionAndRotation(position, Quaternion.LookRotation(target - position, Vector3.up));
+            Camera camera = cameraObject.AddComponent<Camera>();
+            camera.enabled = false; // CameraSensor가 결정할 때만 오프스크린으로 렌더한다.
+            camera.fieldOfView = 50f;
+            camera.aspect = (float)BatterAgent.ImageWidth / BatterAgent.ImageHeight;
+            camera.nearClipPlane = 0.05f;
+            camera.farClipPlane = 180f;
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = Color.black;
+            camera.allowHDR = false;
+            camera.allowMSAA = false;
+            var cameraData = cameraObject.AddComponent<UniversalAdditionalCameraData>();
+            cameraData.renderPostProcessing = false;
+            ConfigureBallOnlyView(camera, field);
+            sensor = eye.AddComponent<CameraSensorComponent>();
+            sensor.SensorName = EyeName;
+            sensor.Camera = camera;
+            sensor.Width = BatterAgent.ImageWidth;
+            sensor.Height = BatterAgent.ImageHeight;
+            sensor.Grayscale = true;
+            sensor.ObservationStacks = BatterAgent.ImageStacks;
+            sensor.CompressionType = SensorCompressionType.PNG;
+            sensor.RuntimeCameraEnable = false;
             EditorUtility.SetDirty(sensor);
+        }
+
+        private static void ConfigureBallOnlyView(Camera camera, FieldLayout field)
+        {
+            BallController ball = field.transform.root.GetComponentInChildren<BallController>(true);
+            if (camera == null || ball == null)
+                throw new InvalidOperationException("The batter sensor needs its arena camera and ball.");
+            Undo.RecordObject(camera, "Render only the ball in the batter sensor");
+            foreach (Renderer renderer in ball.GetComponentsInChildren<Renderer>(true))
+                Undo.RecordObject(renderer.gameObject, "Assign ball observation layer");
+            UniversalAdditionalCameraData data = camera.GetComponent<UniversalAdditionalCameraData>();
+            if (data != null) Undo.RecordObject(data, "Disable batter sensor post processing");
+            BatterAgent.ConfigureBallOnlyCamera(camera, ball);
+            EditorUtility.SetDirty(camera);
+            if (data != null) EditorUtility.SetDirty(data);
+            foreach (Renderer renderer in ball.GetComponentsInChildren<Renderer>(true))
+                EditorUtility.SetDirty(renderer.gameObject);
+            EditorSceneManager.MarkSceneDirty(field.gameObject.scene);
+        }
+
+        private static void EnsureSensorBallLayer()
+        {
+            if (LayerMask.NameToLayer(BatterAgent.SensorBallLayerName) >= 0) return;
+            var manager = new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset")[0]);
+            SerializedProperty layers = manager.FindProperty("layers");
+            for (int i = 8; i < layers.arraySize; i++)
+            {
+                SerializedProperty layer = layers.GetArrayElementAtIndex(i);
+                if (!string.IsNullOrEmpty(layer.stringValue)) continue;
+                layer.stringValue = BatterAgent.SensorBallLayerName;
+                manager.ApplyModifiedPropertiesWithoutUndo();
+                AssetDatabase.SaveAssets();
+                return;
+            }
+            throw new InvalidOperationException("No free user layer for BatterSensorBall. Existing layers were preserved.");
         }
 
         private static void EnsureTag(string tag)

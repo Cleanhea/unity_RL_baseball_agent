@@ -1,19 +1,21 @@
-# Stage 3: offense (batter + runners, team 0) and defense (pitcher + 9 fielders, team 1) trained at the same time.
+# Simplified defense (2026-10-07): C/1B/2B/3B fixed; CF only moves. Continuous 2 + discrete [3] (1B/2B/3B), no hold/home/relay.
+# Camera batter contract (2026-10-07): 256x256 grayscale x3; incompatible with ray checkpoints.
+# Stage 3: offense (batter + runners, team 0) and defense (pitcher + fixed infield + center fielder, team 1) trained at the same time.
 # Scene: Assets/BaseballSimulation/Scenes/Training/Stage3_FullTeam.unity
 # Batter and pitcher start from the stage 2 checkpoints (observations, actions and network size must match stage 2).
-# The 9 fielders (BaseballFielder) and 4 runners (BaseballRunner: batter-runner + runners starting on 1B/2B/3B)
+# The sole center fielder (BaseballFielder) and 4 runners (BaseballRunner: batter-runner + runners starting on 1B/2B/3B)
 # are each a SimpleMultiAgentGroup with a team reward, so they use MA-POCA.
 # Batter/pitcher episode = one plate appearance. Fielder/runner group episode = one ball in play.
-# Fielders and runners decide every 5 fixed steps (0.1 s) while the batted ball is live.
+# CF/runners decide every 5 fixed steps (0.1 s); CF requests a fresh throw decision immediately after a live catch.
 # 30% of new plate appearances start with random runners/outs (randomSituationProbability).
 # Values are a first-experiment starting point.
 behaviors:
   BaseballBatter:
     trainer_type: ppo
-    init_path: Training/results/stage2_batter_pitcher/BaseballBatter/checkpoint.pt
+    init_path: Training/results/stage2_batter_pitcher_camera/BaseballBatter/checkpoint.pt
     hyperparameters:
-      batch_size: 256
-      buffer_size: 10240
+      batch_size: 128
+      buffer_size: 2048
       learning_rate: 2.0e-4
       beta: 2.0e-2  # raised from 5e-3: batter collapsed to taking (swing rate ~7%)
       epsilon: 0.2
@@ -24,6 +26,7 @@ behaviors:
       normalize: false
       hidden_units: 256
       num_layers: 2
+      vis_encode_type: simple
     reward_signals:
       extrinsic:
         gamma: 0.99
@@ -35,7 +38,7 @@ behaviors:
     summary_freq: 20000
   BaseballPitcher:
     trainer_type: ppo
-    init_path: Training/results/stage2_batter_pitcher/BaseballPitcher/checkpoint.pt
+    init_path: Training/results/stage2_batter_pitcher_camera/BaseballPitcher/checkpoint.pt
     hyperparameters:
       batch_size: 64
       buffer_size: 1024
@@ -86,8 +89,8 @@ behaviors:
     trainer_type: baseball_fielder_poca  # registered direction-preserving POCA extension
     hyperparameters:
       # Collect fewer live-ball decisions before the first update; contact can be rare early on.
-      batch_size: 256
-      buffer_size: 4096
+      batch_size: 128
+      buffer_size: 2048
       learning_rate: 3.0e-4
       beta: 5.0e-3  # 1e-3 collapsed fielder entropy (2.0 -> 0.19) into a near-still policy (2026-10-02)
       epsilon: 0.2
@@ -103,7 +106,7 @@ behaviors:
         gamma: 0.99  # keep equal to PlayOutcomeRewards.DefenseShapingGamma (fielder shaping reward)
         strength: 1.0
     keep_checkpoints: 5
-    checkpoint_interval: 500000
-    max_steps: 20000000
+    checkpoint_interval: 200000
+    max_steps: 3000000
     time_horizon: 64
     summary_freq: 2000

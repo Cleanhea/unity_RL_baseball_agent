@@ -1,0 +1,119 @@
+# Camera6/100Hz stage 3: inherit the completed stage-2 batter and pitcher.
+# Keep prepared controls/rewards; runner and CF start fresh. Fixed C/1B/2B/3B, moving CF only.
+# Use continue_stage3.py to validate completion and resolve actual source paths.
+behaviors:
+  BaseballBatter:
+    trainer_type: ppo
+    init_path: Training/results/stage2_batter_pitcher_camera6_selfplay/BaseballBatter/checkpoint.pt
+    hyperparameters:
+      batch_size: 128
+      buffer_size: 2048
+      learning_rate: 0.0001
+      beta: 0.005
+      epsilon: 0.2
+      lambd: 0.9746794345
+      num_epoch: 3
+      learning_rate_schedule: constant
+    network_settings:
+      normalize: false
+      hidden_units: 256
+      num_layers: 2
+      vis_encode_type: simple
+    reward_signals:
+      extrinsic:
+        gamma: 0.9949874371
+        strength: 1.0
+    keep_checkpoints: 5
+    checkpoint_interval: 400000
+    max_steps: 12000000
+    time_horizon: 128
+    summary_freq: 40000
+    self_play:
+      save_steps: 100000
+      team_change: 400000
+      swap_steps: 100000
+      window: 10
+      play_against_latest_model_ratio: 0.5
+      initial_elo: 1200.0
+  BaseballPitcher:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 64
+      buffer_size: 1024
+      learning_rate: 0.0003
+      beta: 0.01
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+      learning_rate_schedule: constant
+    network_settings:
+      normalize: false
+      hidden_units: 128
+      num_layers: 2
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+    keep_checkpoints: 5
+    checkpoint_interval: 20000
+    max_steps: 260000
+    time_horizon: 8
+    summary_freq: 2000
+    self_play:
+      save_steps: 2200
+      team_change: 8700
+      swap_steps: 2200
+      window: 10
+      play_against_latest_model_ratio: 0.5
+      initial_elo: 1200.0
+    init_path: Training/results/stage2_batter_pitcher_camera6_selfplay/BaseballPitcher/checkpoint.pt
+  BaseballRunner:
+    trainer_type: poca
+    hyperparameters:
+      batch_size: 128
+      buffer_size: 4096
+      learning_rate: 0.0003
+      beta: 0.005
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: false
+      hidden_units: 128
+      num_layers: 2
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+    keep_checkpoints: 5
+    checkpoint_interval: 100000
+    max_steps: 2000000
+    time_horizon: 64
+    summary_freq: 10000
+  BaseballFielder:
+    trainer_type: baseball_fielder_poca
+    hyperparameters:
+      batch_size: 128
+      buffer_size: 2048
+      learning_rate: 0.0003
+      beta: 0.005
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: false
+      hidden_units: 256
+      num_layers: 2
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+    keep_checkpoints: 5
+    checkpoint_interval: 200000
+    max_steps: 3000000
+    time_horizon: 64
+    summary_freq: 2000
+environment_parameters:
+  batter_prepared: 1.0

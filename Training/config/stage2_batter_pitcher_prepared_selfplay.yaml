@@ -1,0 +1,85 @@
+# Prepared batter only: do not start until preparation-status.json has ready=true.
+# Camera batter contract (2026-10-07): 256x256 grayscale x3; incompatible with ray checkpoints.
+# Stage 2 with ML-Agents self-play: batter (team 0) and pitcher (team 1) take turns learning while the other
+# side plays a frozen past snapshot. Same scene and batter start point as stage2_batter_pitcher.yaml.
+# Scene: Assets/BaseballSimulation/Scenes/Training/Stage2_BatterPitcher.unity
+#
+# Step ratio: trainer steps count decisions. The batter decides ~23 times per pitch (stance + every fixed step
+# of the flight until it swings; measured 51 decisions per 2.2-pitch plate appearance), the pitcher once.
+# All self_play and max_steps values below are converted with that ratio so both sides get the same number of
+# pitches per learning phase and finish together:
+#   team_change  batter 200000 / pitcher 8700  -> ~8.7k pitches per learning phase
+#   save_steps   batter 50000  / pitcher 2200  -> 4 snapshots per learning phase
+#   swap_steps   batter 50000  / pitcher 2200  -> the frozen opponent changes 4 times per phase
+#   max_steps    batter 6000000 / pitcher 260000 -> ~259k learning pitches each
+# Only one side learns at a time, so this takes about 1.3x the pitches of stage2_batter_pitcher.yaml.
+# Self-play/ELO in TensorBoard is not reliable here (ML-Agents scores the sign of the last step reward, which
+# mixes the last pitch's shaping reward into the plate-appearance result). Use Matchup/* and Benchmark */*.
+behaviors:
+  BaseballBatter:
+    trainer_type: ppo
+    init_path: Training/results/stage1_batter_camera_prepare/BaseballBatter/checkpoint.pt
+    hyperparameters:
+      batch_size: 128
+      buffer_size: 2048
+      learning_rate: 1.0e-4
+      beta: 5.0e-3
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+      learning_rate_schedule: constant
+    network_settings:
+      normalize: false
+      hidden_units: 256
+      num_layers: 2
+      vis_encode_type: simple
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+    keep_checkpoints: 5
+    checkpoint_interval: 200000
+    max_steps: 6000000
+    time_horizon: 64
+    summary_freq: 20000
+    self_play:
+      save_steps: 50000
+      team_change: 200000
+      swap_steps: 50000
+      window: 10
+      play_against_latest_model_ratio: 0.5
+      initial_elo: 1200.0
+  BaseballPitcher:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 64
+      buffer_size: 1024
+      learning_rate: 3.0e-4
+      beta: 1.0e-2
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+      learning_rate_schedule: constant
+    network_settings:
+      normalize: false
+      hidden_units: 128
+      num_layers: 2
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+    keep_checkpoints: 5
+    checkpoint_interval: 20000
+    max_steps: 260000
+    time_horizon: 8
+    summary_freq: 2000
+    self_play:
+      save_steps: 2200
+      team_change: 8700
+      swap_steps: 2200
+      window: 10
+      play_against_latest_model_ratio: 0.5
+      initial_elo: 1200.0
+
+environment_parameters:
+  batter_prepared: 1.0

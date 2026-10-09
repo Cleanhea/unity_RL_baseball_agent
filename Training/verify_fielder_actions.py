@@ -81,14 +81,18 @@ for filename in ["stage3_full_team.yaml", "stage3_full_team_resume.yaml", "stage
     fielder_settings = options.behaviors["BaseballFielder"]
     assert fielder_settings.trainer_type == TRAINER_NAME
     assert fielder_settings.hyperparameters.beta == 0.005
+    assert fielder_settings.hyperparameters.batch_size == 128
+    assert fielder_settings.hyperparameters.buffer_size == 2048
+    assert fielder_settings.max_steps == 3000000
     assert fielder_settings.reward_signals[next(iter(fielder_settings.reward_signals))].gamma == 0.99
     assert options.behaviors["BaseballBatter"].trainer_type == "ppo"
     assert options.behaviors["BaseballRunner"].trainer_type == "poca"
     if filename == "stage3_full_team_refield.yaml":
-        # Fielders restart; batter, pitcher and runners continue from the archived first 9-fielder run.
+        # Fielders restart; the camera batter cannot load the archived ray model.
         assert fielder_settings.init_path is None
-        for behavior in ("BaseballBatter", "BaseballPitcher", "BaseballRunner"):
-            assert "stage3_full_team_9f_try1_20261002" in str(options.behaviors[behavior].init_path), behavior
+        assert "stage3_full_team_camera_cf/" in str(options.behaviors["BaseballBatter"].init_path)
+        for behavior in ("BaseballPitcher", "BaseballRunner"):
+            assert "stage3_full_team_camera_cf" in str(options.behaviors[behavior].init_path), behavior
 print("PASS ordinary mlagents-learn plugin discovery and all four stage-3 YAML configs, fielder beta=0.005, refield init paths")
 
 observations = [ObservationSpec((77,), (DimensionProperty.NONE,), ObservationType.DEFAULT, "fielder")]
@@ -124,3 +128,20 @@ np.testing.assert_allclose(result,expected,atol=1e-6)
 print("PASS ONNX opset 9 export, checker and evaluated radial directions")
 for p in ["Training/train.py","Training/auto_curriculum.py", "Training/mlagents_extensions/baseball_mlagents/actions.py", "Training/mlagents_extensions/baseball_mlagents/trainer.py"]: ast.parse((ROOT/p).read_text(encoding="utf-8"))
 print("PASS trainer entry and curriculum syntax")
+
+# New CF action branch must pass the actual custom trainer policy/export path.
+cf_spec = BehaviorSpec(observations, ActionSpec(2, np.array([3], dtype=np.int32)))
+with tempfile.TemporaryDirectory(prefix="baseball-cf-check-") as artifact:
+    trainer = FielderPOCATrainer("BaseballFielder", 10, fielder_settings, True, False, 42, artifact)
+    policy = trainer.create_policy(BehaviorIdentifiers.from_name_behavior_id("BaseballFielder"), cf_spec)
+    assert isinstance(policy.actor, FielderActor)
+    inputs = [torch.zeros((2, 77))]
+    outputs = policy.actor(inputs, torch.ones((2, 3)))
+    assert outputs[2].shape == (2, 2) and outputs[5].shape == (2, 1)
+    assert outputs[6].reshape(-1).tolist() == [3.0]
+    trainer.policy = policy
+    assert trainer.create_optimizer() is not None
+    from mlagents.trainers.torch_entities.model_serialization import ModelSerializer
+    ModelSerializer(policy).export_policy_model(artifact + "/cf-policy")
+    onnx.checker.check_model(onnx.load(artifact + "/cf-policy.onnx"))
+print("PASS sole center-fielder policy: 77 observations, continuous 2 + three base destinations")

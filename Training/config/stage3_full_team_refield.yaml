@@ -1,16 +1,17 @@
-# Stage 3 restart for the fielders only (2026-10-02).
-# Batter, pitcher and runners continue from the archived first 9-fielder stage-3 run; the fielders start fresh,
-# because that run collapsed them into a near-still, throw-immediately policy (see Training/README.md).
-# Before running: stop training, then rename Training/results/stage3_full_team to stage3_full_team_9f_try1_20261002.
+# Simplified defense (2026-10-07): C/1B/2B/3B fixed; CF only moves. Continuous 2 + discrete [3] (1B/2B/3B), no hold/home/relay.
+# Camera batter contract (2026-10-07): 256x256 grayscale x3; incompatible with ray checkpoints.
+# Stage 3 restart for the center fielder only (2026-10-07).
+# Batter/pitcher/runners continue from the new camera + CF run; the center fielder starts fresh.
+# Requires completed compatible stage-3 checkpoints. Do not load old five-action fielder checkpoints.
 # init_path only loads weights; step counters start from 0 under the new run id.
 # Everything else matches stage3_full_team.yaml.
 behaviors:
   BaseballBatter:
     trainer_type: ppo
-    init_path: Training/results/stage3_full_team_9f_try1_20261002/BaseballBatter/checkpoint.pt
+    init_path: Training/results/stage3_full_team_camera_cf/BaseballBatter/checkpoint.pt
     hyperparameters:
-      batch_size: 256
-      buffer_size: 10240
+      batch_size: 128
+      buffer_size: 2048
       learning_rate: 2.0e-4
       beta: 2.0e-2  # raised from 5e-3: batter collapsed to taking (swing rate ~7%)
       epsilon: 0.2
@@ -21,6 +22,7 @@ behaviors:
       normalize: false
       hidden_units: 256
       num_layers: 2
+      vis_encode_type: simple
     reward_signals:
       extrinsic:
         gamma: 0.99
@@ -32,7 +34,7 @@ behaviors:
     summary_freq: 20000
   BaseballPitcher:
     trainer_type: ppo
-    init_path: Training/results/stage3_full_team_9f_try1_20261002/BaseballPitcher/checkpoint.pt
+    init_path: Training/results/stage3_full_team_camera_cf/BaseballPitcher/checkpoint.pt
     hyperparameters:
       batch_size: 64
       buffer_size: 1024
@@ -57,7 +59,7 @@ behaviors:
     summary_freq: 2000
   BaseballRunner:
     trainer_type: poca
-    init_path: Training/results/stage3_full_team_9f_try1_20261002/BaseballRunner/checkpoint.pt
+    init_path: Training/results/stage3_full_team_camera_cf/BaseballRunner/checkpoint.pt
     hyperparameters:
       batch_size: 128
       buffer_size: 4096
@@ -84,8 +86,8 @@ behaviors:
     trainer_type: baseball_fielder_poca  # registered direction-preserving POCA extension
     hyperparameters:
       # Collect fewer live-ball decisions before the first update; contact can be rare early on.
-      batch_size: 256
-      buffer_size: 4096
+      batch_size: 128
+      buffer_size: 2048
       learning_rate: 3.0e-4
       beta: 5.0e-3  # 1e-3 collapsed fielder entropy (2.0 -> 0.19) into a near-still policy (2026-10-02)
       epsilon: 0.2
@@ -101,7 +103,7 @@ behaviors:
         gamma: 0.99  # keep equal to PlayOutcomeRewards.DefenseShapingGamma (fielder shaping reward)
         strength: 1.0
     keep_checkpoints: 5
-    checkpoint_interval: 500000
-    max_steps: 20000000
+    checkpoint_interval: 200000
+    max_steps: 3000000
     time_horizon: 64
     summary_freq: 2000

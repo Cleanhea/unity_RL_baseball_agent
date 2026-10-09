@@ -1,3 +1,4 @@
+# Camera batter contract (2026-10-07): 256x256 grayscale x3; incompatible with ray checkpoints.
 # Resume an existing stage2_batter_pitcher run with --resume.
 # Keep this in sync with stage2_batter_pitcher.yaml except for BaseballBatter.init_path:
 # ML-Agents 1.1.0 prioritizes init_path over the run's own checkpoint even with --resume.
@@ -5,8 +6,8 @@ behaviors:
   BaseballBatter:
     trainer_type: ppo
     hyperparameters:
-      batch_size: 256
-      buffer_size: 10240
+      batch_size: 128
+      buffer_size: 2048
       learning_rate: 3.0e-4
       beta: 5.0e-3
       epsilon: 0.2
@@ -17,6 +18,7 @@ behaviors:
       normalize: false
       hidden_units: 256
       num_layers: 2
+      vis_encode_type: simple
     reward_signals:
       extrinsic:
         gamma: 0.99

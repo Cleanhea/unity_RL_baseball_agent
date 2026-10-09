@@ -1,0 +1,18 @@
+{
+  "article_characters": 13407,
+  "embedded_images": [
+    "docs\\assets\\baseball-rl-retrospective\\architecture.png",
+    "docs\\assets\\baseball-rl-retrospective\\observation-size.png",
+    "docs\\assets\\baseball-rl-retrospective\\sensor-30frames.png",
+    "docs\\assets\\baseball-rl-retrospective\\timing-progress.png",
+    "docs\\assets\\baseball-rl-retrospective\\stage3-progress.png"
+  ],
+  "missing_links": [],
+  "korean_text_check": "PASS",
+  "snapshot": "2026-10-09T22:52:34.983354",
+  "source_commit": "9240392",
+  "history_commits": 9,
+  "headless_html_preview": "PASS: top-of-article Korean text, table, and spacing inspected",
+  "figures_visual_review": "PASS: architecture and all three charts inspected",
+  "preview_image": "article-preview.png"
+}

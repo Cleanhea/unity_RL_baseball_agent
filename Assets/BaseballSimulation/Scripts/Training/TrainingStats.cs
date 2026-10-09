@@ -58,6 +58,9 @@ namespace BaseballSimulation
         /// </summary>
         public void RecordPitch(PlayDirector director, BatterAgent batter, bool pitcherAgent)
         {
+            Add("Batter Observation/Stack Count", BatterAgent.ImageStacks);
+            Add("Batter Observation/Decision Interval (ms)", Time.fixedDeltaTime * 1000f);
+            Add("Batter Observation/History Span (ms)", (BatterAgent.ImageStacks - 1) * Time.fixedDeltaTime * 1000f);
             PitchCallSnapshot call = director.GetPitchCall();
             if (call.Call != PitchCall.None)
             {
@@ -82,6 +85,7 @@ namespace BaseballSimulation
             if (director.HasContact && hit.ExitSpeed > 0f)
             {
                 Add("Batted Ball/Exit Speed (km/h)", hit.ExitSpeed * 3.6f, StatAggregationMethod.Histogram);
+                Add("Batted Ball/Contact Quality", director.ContactQuality, StatAggregationMethod.Histogram);
                 Add("Batted Ball/Launch Angle (deg)", hit.LaunchAngleDegrees, StatAggregationMethod.Histogram);
                 Add("Batted Ball/Spray Angle (deg)", hit.SprayAngleDegrees, StatAggregationMethod.Histogram);
                 // 수비가 공중에서 잡으면 페어/파울 판정 없이 인플레이가 된다. 판정이 난 타구만 비율에 넣는다.
@@ -114,7 +118,10 @@ namespace BaseballSimulation
                 Add("Batter Reward/Pop Fly", reward.PopFly);
                 Add("Batter Reward/Foul", reward.Foul);
                 Add("Batter Reward/Home Run", reward.HomeRun);
-                Add("Batter Reward/Pitch Total", reward.Total);
+                Add("Batter Reward/Pitch Total", batter.LastPitchAddedReward);
+                Add("Batter Reward/Training Contact Bonus", batter.LastPitchTrainingContactBonus);
+                Add("Batter Training/Lesson", batter.TrainingLesson);
+                Add("Batter Reward/Training Quality Adjustment", batter.LastPitchTrainingQualityReward);
             }
         }
 
@@ -229,6 +236,19 @@ namespace BaseballSimulation
 
         /// <summary>컨트롤러가 초기화한 투구 하나. 중단(1)의 평균이 중단 비율이다.</summary>
         public void RecordPlayEnd(bool aborted) => Add("Env/Aborted Play", aborted ? 1f : 0f);
+        public void RecordFieldingTimeout(bool timedOut) => Add("Env/Fielding Timeout", timedOut ? 1f : 0f);
+        public void RecordTrainingPlateAppearance(BatterAgent batter) =>
+            Add("Batter Training/Qualified Hit", batter.LastPlateAppearanceQualifiedHit ? 1f : 0f);
+
+        public void RecordPreparationPlateAppearance(BatterAgent batter)
+        {
+            if (batter.SkillPhase >= 0) Add("Batter Skills/Phase", batter.SkillPhase, StatAggregationMethod.Histogram);
+            Add("Batter Preparation/Phase", batter.PreparationPhase, StatAggregationMethod.Histogram);
+            Add("Batter Preparation/Fair Contact", batter.LastPlateAppearanceFairContact ? 1f : 0f, StatAggregationMethod.Histogram);
+            Add("Batter Preparation/Qualified Hit", batter.LastPlateAppearanceQualifiedHit ? 1f : 0f, StatAggregationMethod.Histogram);
+            Add("Batter Preparation/Control Scale", batter.TrainingControlScale);
+            Add("Batter Preparation/Swing Gate (s)", batter.EarliestSwingSeconds);
+        }
 
         /// <summary>존 통과 여부. 타격된 공은 플레이트를 지나지 않으므로 투구 목표 위치로 근사한다.</summary>
         private static bool InZone(PlayDirector director, PitchCallSnapshot call) => director.HasContact

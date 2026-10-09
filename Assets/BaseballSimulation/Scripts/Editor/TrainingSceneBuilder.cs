@@ -32,7 +32,29 @@ namespace BaseballSimulation.Editor
 
         public const string DefenseMaterialPath = "Assets/BaseballSimulation/Materials/DefenseUniform.mat";
         /// <summary>2단계부터 고정 상대 평가 타석에서 쓰는 고정 타자 모델(1단계 학습 결과를 복사한 것).</summary>
-        public const string BenchmarkBatterModelPath = "Assets/BaseballSimulation/Models/BenchmarkBatter_Stage1.onnx";
+        public const string BenchmarkBatterModelPath = "Assets/BaseballSimulation/Models/BenchmarkBatter_Stage1_Camera12_192.onnx";
+
+        /// <summary>현재 학습 씬을 재생성하지 않고 모든 경기장의 타자 센서만 전환한다.</summary>
+        [MenuItem("Tools/Baseball Simulation/Training/Update Batter Camera Sensors In Current Scene")]
+        public static void UpdateBatterCameraSensors()
+        {
+            foreach (TrainingEnvController controller in UnityEngine.Object.FindObjectsByType<TrainingEnvController>(FindObjectsInactive.Include))
+            {
+                BatterAgent batter = controller.Batter;
+                if (batter == null || batter.Director == null) continue;
+                bool hadRays = batter.GetComponentInChildren<Unity.MLAgents.Sensors.RayPerceptionSensorComponent3D>(true) != null;
+                BatterAgentSceneSetup.ConfigureEye(batter.transform, batter.Director.FieldLayout);
+                BehaviorParameters behavior = batter.GetComponent<BehaviorParameters>();
+                Undo.RecordObject(behavior, "Migrate batter camera policy");
+                if (hadRays) behavior.Model = null;
+                ModelAsset benchmark = AssetDatabase.LoadAssetAtPath<ModelAsset>(BenchmarkBatterModelPath);
+                Undo.RecordObject(controller, "Migrate benchmark batter camera policy");
+                controller.AssignBenchmarkBatterModel(benchmark);
+                EditorUtility.SetDirty(behavior);
+                EditorUtility.SetDirty(controller);
+                EditorSceneManager.MarkSceneDirty(batter.gameObject.scene);
+            }
+        }
 
         private const string ArenaCountPrefKey = "BaseballSimulation.TrainingArenaCount";
         /// <summary>복제한 경기장 사이 X 간격(m). 펜스 반경 110 m와 관중석보다 넉넉해 공·레이가 다른 경기장에 닿지 않는다.</summary>
@@ -63,20 +85,16 @@ namespace BaseballSimulation.Editor
         public static void BuildStage3Menu() => BuildWithPrompt(TrainingStage.FullTeam);
 
         /// <summary>
-        /// 3단계 수비수 9명의 시작 위치(지면, 홈 = 원점, +Z 중견수, +X 1루). 배열 순서가 역할 값과 같고 PlayDirector 수비수 인덱스가 된다.
-        /// 투수는 투구하는 투수 몸 위치(<see cref="AddPitcher"/>)를 쓰고, 표의 값은 투수 몸이 없을 때의 대체 위치다.
+        /// 3단계 수비 몸 5개의 기본 위치(지면, 홈 = 원점, +Z 중견수, +X 1루). 역할 값과 배열 인덱스는 다르며 베이스 수비는 FieldLayout 실제 위치를 쓴다.
+        /// 고정 네 명과 이동 중견수만 만든다. 투수는 투구만 한다.
         /// </summary>
         public static readonly (FielderRole role, string name, Vector3 spot)[] FielderLayout =
         {
-            (FielderRole.Pitcher, "Fielder_P", new Vector3(0.35f, 0f, 18.69f)),
             (FielderRole.Catcher, "Fielder_C", new Vector3(0f, 0f, -1.6f)),
-            (FielderRole.FirstBase, "Fielder_1B", new Vector3(16f, 0f, 23f)),
-            (FielderRole.SecondBase, "Fielder_2B", new Vector3(9f, 0f, 35f)),
-            (FielderRole.ThirdBase, "Fielder_3B", new Vector3(-17f, 0f, 22.5f)),
-            (FielderRole.Shortstop, "Fielder_SS", new Vector3(-9f, 0f, 35f)),
-            (FielderRole.LeftField, "Fielder_LF", new Vector3(-36f, 0f, 66f)),
+            (FielderRole.FirstBase, "Fielder_1B", new Vector3(19.4f, 0f, 19.4f)),
+            (FielderRole.SecondBase, "Fielder_2B", new Vector3(0f, 0f, 38.8f)),
+            (FielderRole.ThirdBase, "Fielder_3B", new Vector3(-19.4f, 0f, 19.4f)),
             (FielderRole.CenterField, "Fielder_CF", new Vector3(0f, 0f, 80f)),
-            (FielderRole.RightField, "Fielder_RF", new Vector3(36f, 0f, 66f)),
         };
 
         private static void BuildWithPrompt(TrainingStage stage)
@@ -130,7 +148,7 @@ namespace BaseballSimulation.Editor
             FielderAgent[] fielders = null;
             if (stage >= TrainingStage.FullTeam)
             {
-                fielders = AddFielders(director, pitcher);
+                fielders = AddFielders(director);
                 runners = AddRunners(director);
             }
             AddController(stage, director, batter, pitcher, runners, fielders);
@@ -192,55 +210,120 @@ namespace BaseballSimulation.Editor
         }
 
         /// <summary>
-        /// 수비수 9명을 시작 위치에 세우고 PlayDirector 수비수 목록에 같은 순서로 연결한다.
-        /// 아홉 명이 같은 Behavior(BaseballFielder, 팀 1)를 쓰고 역할은 관측으로 구분한다. 부품에 Collider가 없다.
-        /// 투수 수비수는 투구하는 투수 몸 자리에 서고, 투수 몸의 모양 부품(몸·머리·팔)을 넘겨받아 타구 뒤 함께 움직인다.
-        /// 투구 Agent(PitcherAgent)는 원래 오브젝트에 남는다. 한 오브젝트에 Agent 두 개를 둘 수 없기 때문이다.
+        /// C·1B·2B·3B는 고정 몸만, CF는 이동 몸과 수비 Agent를 만든다. 부품에 Collider가 없다.
+        /// 몸 다섯 개는 Director, CF Agent 한 개는 학습 컨트롤러에 연결한다.
         /// </summary>
-        private static FielderAgent[] AddFielders(PlayDirector director, PitcherAgent pitcher)
+        private static FielderAgent[] AddFielders(PlayDirector director)
         {
             BallController ball = UnityEngine.Object.FindAnyObjectByType<BallController>();
             Material uniform = DefenseMaterial();
             Material skin = AssetDatabase.LoadAssetAtPath<Material>("Assets/BaseballSimulation/Materials/FieldBaseMarker.mat");
             var bodies = new FielderController[FielderLayout.Length];
-            var agents = new FielderAgent[FielderLayout.Length];
+            var agents = new FielderAgent[1];
+            director.SetSimplifiedFielding(true);
             for (int i = 0; i < FielderLayout.Length; i++)
             {
                 var (role, name, spot) = FielderLayout[i];
-                bool pitcherBody = role == FielderRole.Pitcher && pitcher != null;
-                if (pitcherBody) spot = new Vector3(pitcher.transform.position.x, 0f, pitcher.transform.position.z);
+                spot = SimplifiedFielderSpot(director, role);
                 var root = new GameObject(name);
                 root.transform.SetParent(ball.transform.parent, false);
                 root.transform.SetPositionAndRotation(spot, Quaternion.LookRotation(new Vector3(-spot.x, 0f, -spot.z).normalized));
-                if (pitcherBody)
-                {
-                    foreach (string part in new[] { "Body", "Head", "ThrowingArm" })
-                    {
-                        Transform child = pitcher.transform.Find(part);
-                        if (child != null) child.SetParent(root.transform, true);
-                    }
-                }
-                else
-                {
-                    BatterSceneSetup.Part("Body", root.transform, PrimitiveType.Capsule, new Vector3(0f, 0.9f, 0f), new Vector3(0.45f, 0.65f, 0.45f), uniform);
-                    BatterSceneSetup.Part("Head", root.transform, PrimitiveType.Sphere, new Vector3(0f, 1.65f, 0f), Vector3.one * 0.3f, skin);
-                }
+                BatterSceneSetup.Part("Body", root.transform, PrimitiveType.Capsule, new Vector3(0f, 0.9f, 0f), new Vector3(0.45f, 0.65f, 0.45f), uniform);
+                BatterSceneSetup.Part("Head", root.transform, PrimitiveType.Sphere, new Vector3(0f, 1.65f, 0f), Vector3.one * 0.3f, skin);
                 BatterSceneSetup.Part("Glove", root.transform, PrimitiveType.Sphere, new Vector3(0.3f, FielderController.GloveHeight, 0.25f), Vector3.one * 0.18f, skin);
                 FielderController body = root.AddComponent<FielderController>();
-                body.Configure(role, spot);
+                body.Configure(role, spot, role != FielderRole.CenterField);
                 bodies[i] = body;
+                EditorUtility.SetDirty(body);
+                if (role != FielderRole.CenterField) continue;
                 FielderAgent agent = root.AddComponent<FielderAgent>();
                 agent.Assign(director, i);
                 agent.MaxStep = 0;
                 ConfigureBehavior(root.GetComponent<BehaviorParameters>(), "BaseballFielder", 1, FielderAgent.ObservationSize,
-                    new ActionSpec(FielderAgent.ContinuousActionCount, new[] { FielderAgent.ThrowTargetCount }));
-                EditorUtility.SetDirty(body);
+                    new ActionSpec(FielderAgent.ContinuousActionCount, new[] { FielderAgent.SimplifiedThrowTargetCount }));
                 EditorUtility.SetDirty(agent);
-                agents[i] = agent;
+                agents[0] = agent;
             }
             director.AssignFielders(bodies);
             EditorUtility.SetDirty(director);
             return agents;
+        }
+
+        private static Vector3 SimplifiedFielderSpot(PlayDirector director, FielderRole role)
+        {
+            FieldLayout field = director.FieldLayout;
+            switch (role)
+            {
+                case FielderRole.FirstBase: return field.GetBasePosition(BaseId.First);
+                case FielderRole.SecondBase: return field.GetBasePosition(BaseId.Second);
+                case FielderRole.ThirdBase: return field.GetBasePosition(BaseId.Third);
+                case FielderRole.Catcher: return field.HomePosition + new Vector3(0f, 0f, -1.6f);
+                default: return field.HomePosition + new Vector3(0f, 0f, 80f);
+            }
+        }
+
+        [MenuItem("Tools/Baseball Simulation/Training/Update Stage 3 To Fixed Infield And Center Fielder")]
+        public static void UpdateSimplifiedFielding()
+        {
+            foreach (TrainingEnvController controller in UnityEngine.Object.FindObjectsByType<TrainingEnvController>(FindObjectsInactive.Include))
+            {
+                if (controller.Stage != TrainingStage.FullTeam) continue;
+                PlayDirector director = controller.Director;
+                var bodies = new FielderController[FielderLayout.Length];
+                var agents = new FielderAgent[1];
+                for (int i = 0; i < director.FielderCount; i++)
+                {
+                    FielderController old = director.GetFielder(i);
+                    bool keep = Array.Exists(FielderLayout, entry => entry.role == old.Role);
+                    if (keep) continue;
+                    if (old.Role == FielderRole.Pitcher && controller.Pitcher != null)
+                        foreach (string part in new[] { "Body", "Head", "ThrowingArm" })
+                        {
+                            Transform child = old.transform.Find(part);
+                            if (child != null) child.SetParent(controller.Pitcher.transform, true);
+                        }
+                    UnityEngine.Object.DestroyImmediate(old.gameObject);
+                }
+                director.SetSimplifiedFielding(true);
+                for (int i = 0; i < FielderLayout.Length; i++)
+                {
+                    FielderRole role = FielderLayout[i].role;
+                    // Removed bodies remain null in the old list until AssignFielders below.
+                    FielderController body = null;
+                    for (int j = 0; j < director.FielderCount; j++)
+                        if (director.GetFielder(j) != null && director.GetFielder(j).Role == role) body = director.GetFielder(j);
+                    if (body == null) throw new InvalidOperationException($"Missing {role} in {director.name}.");
+                    Vector3 spot = SimplifiedFielderSpot(director, role);
+                    body.Configure(role, spot, role != FielderRole.CenterField);
+                    body.ResetState(director.FieldLayout.HomePosition);
+                    bodies[i] = body;
+                    FielderAgent agent = body.GetComponent<FielderAgent>();
+                    BehaviorParameters behavior = body.GetComponent<BehaviorParameters>();
+                    if (role == FielderRole.CenterField)
+                    {
+                        bool changedContract = behavior.BrainParameters.ActionSpec.BranchSizes[0] != FielderAgent.SimplifiedThrowTargetCount;
+                        agent.Assign(director, i);
+                        ConfigureBehavior(behavior, "BaseballFielder", 1, FielderAgent.ObservationSize,
+                            new ActionSpec(FielderAgent.ContinuousActionCount, new[] { FielderAgent.SimplifiedThrowTargetCount }));
+                        if (changedContract) behavior.Model = null;
+                        agents[0] = agent;
+                        EditorUtility.SetDirty(agent);
+                    }
+                    else
+                    {
+                        Unity.MLAgents.DecisionRequester requester = body.GetComponent<Unity.MLAgents.DecisionRequester>();
+                        if (requester != null) UnityEngine.Object.DestroyImmediate(requester);
+                        if (agent != null) UnityEngine.Object.DestroyImmediate(agent);
+                        if (behavior != null) UnityEngine.Object.DestroyImmediate(behavior);
+                    }
+                    EditorUtility.SetDirty(body);
+                }
+                director.AssignFielders(bodies);
+                controller.Assign(controller.Stage, director, controller.Batter, controller.Pitcher, controller.Runners, agents);
+                EditorUtility.SetDirty(director);
+                EditorUtility.SetDirty(controller);
+                EditorSceneManager.MarkSceneDirty(director.gameObject.scene);
+            }
         }
 
         /// <summary>

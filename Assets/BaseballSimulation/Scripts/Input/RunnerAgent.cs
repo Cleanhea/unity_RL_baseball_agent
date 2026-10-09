@@ -105,10 +105,10 @@ namespace BaseballSimulation
                 sensor.AddObservation(other.IsLive ? (int)other.NextBase / 3f : 0f);
             }
 
-            int count = director != null ? director.FielderCount : 0;
             for (int i = 0; i < FielderAgent.RoleCount; i++)
             {
-                Vector3 offset = i < count ? director.GetFielder(i).Position - self : Vector3.zero;
+                int index = director != null ? director.FindFielder((FielderRole)i) : -1;
+                Vector3 offset = index >= 0 ? director.GetFielder(index).Position - self : Vector3.zero;
                 sensor.AddObservation(Mathf.Clamp(offset.x / FieldScale, -2f, 2f));
                 sensor.AddObservation(Mathf.Clamp(offset.z / FieldScale, -2f, 2f));
             }

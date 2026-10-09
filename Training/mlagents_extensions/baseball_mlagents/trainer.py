@@ -17,8 +17,8 @@ class FielderPOCATrainer(POCATrainer):
 
     def create_policy(self, parsed_behavior_id, behavior_spec):
         spec = behavior_spec.action_spec
-        if spec.continuous_size != 2 or tuple(spec.discrete_branches) != (5,):
-            raise ValueError("baseball_fielder_poca requires continuous 2 + discrete [5] fielder actions")
+        if spec.continuous_size != 2 or tuple(spec.discrete_branches) not in ((3,), (5,)):
+            raise ValueError("baseball_fielder_poca requires continuous 2 + discrete [3] (CF) or legacy [5] actions")
         logger.info("Baseball fielder: direction-preserving movement enabled (collection + ONNX)")
         return TorchPolicy(
             self.seed, behavior_spec, self.trainer_settings.network_settings,

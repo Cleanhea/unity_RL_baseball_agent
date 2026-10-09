@@ -7,7 +7,7 @@ using UnityEngine;
 namespace BaseballSimulation
 {
     /// <summary>
-    /// 3단계 수비수 Agent(docs/fielding-agents.md). 아홉 명이 같은 Behavior(BaseballFielder)를 쓰고
+    /// 3단계 수비수 Agent(docs/fielding-agents.md). 단순 수비는 중견수만 Behavior(BaseballFielder)를 쓰고
     /// 역할은 관측의 원-핫으로 구분한다. <see cref="TrainingEnvController"/>가 타구가 살아 있는 동안만 결정을 요청하고
     /// 수비 그룹(SimpleMultiAgentGroup) 보상을 준다. 이동·송구는 PlayDirector 명령으로만 전달한다.
     /// </summary>
@@ -20,6 +20,7 @@ namespace BaseballSimulation
         public const int ObservationSize = 77;
         public const int ContinuousActionCount = 2;
         public const int ThrowTargetCount = 5;
+        public const int SimplifiedThrowTargetCount = 3;
         /// <summary>
         /// 이동 행동 배율. 학습기 출력은 성분 /3 뒤 단위 원으로 제한된 값이라, 그대로 쓰면 최고 속력에 정책 평균 3이 필요하다.
         /// 3을 곱해 출력 크기 1/3(원래 정책 값 1) 이상이면 최고 속력이 되게 한다. 크기 1 제한은 FielderController가 한다.
@@ -35,6 +36,7 @@ namespace BaseballSimulation
 
         public int FielderIndex => fielderIndex;
         public PlayDirector Director => director;
+        public int ThrowActionCount => director != null && director.SimplifiedFielding ? SimplifiedThrowTargetCount : ThrowTargetCount;
 
         public void Assign(PlayDirector value, int index)
         {
@@ -55,9 +57,10 @@ namespace BaseballSimulation
             }
             var brain = GetComponent<BehaviorParameters>().BrainParameters;
             if (brain.VectorObservationSize != ObservationSize || brain.ActionSpec.NumContinuousActions != ContinuousActionCount ||
-                brain.ActionSpec.NumDiscreteActions != 1 || brain.ActionSpec.BranchSizes[0] != ThrowTargetCount)
+                brain.ActionSpec.NumDiscreteActions != 1 || brain.ActionSpec.BranchSizes[0] != ThrowActionCount ||
+                (director.SimplifiedFielding && (body.Role != FielderRole.CenterField || body.MovementLocked)))
             {
-                Debug.LogError($"[FielderAgent] Behavior Parameters는 관측 {ObservationSize}, 연속 행동 2, 이산 분기 [5]여야 한다.", this);
+                Debug.LogError($"[FielderAgent] 관측 {ObservationSize}, 연속 행동 2, 이산 분기 [{ThrowActionCount}] 및 단순 수비의 중견수 연결을 확인하세요.", this);
                 enabled = false;
             }
         }
@@ -109,11 +112,12 @@ namespace BaseballSimulation
             foreach (BaseId baseId in new[] { BaseId.First, BaseId.Second, BaseId.Third, BaseId.Home })
                 AddRelative(sensor, field != null ? field.GetBasePosition(baseId) : Vector3.zero, self, false);
 
-            int count = director != null ? director.FielderCount : 0;
-            for (int i = 0; i < RoleCount; i++)
+            FielderRole selfRole = body != null ? body.Role : GetComponent<FielderController>().Role;
+            for (int role = 0; role < RoleCount; role++)
             {
-                if (i == fielderIndex) continue;
-                Vector3 mate = i < count ? director.GetFielder(i).Position : self;
+                if (role == (int)selfRole) continue;
+                int index = director != null ? director.FindFielder((FielderRole)role) : -1;
+                Vector3 mate = index >= 0 ? director.GetFielder(index).Position : self;
                 AddRelative(sensor, mate, self, false);
             }
         }
@@ -121,11 +125,18 @@ namespace BaseballSimulation
         public override void OnActionReceived(ActionBuffers actions)
         {
             if (director == null) return;
+            if (director.SimplifiedFielding && director.CanThrow(fielderIndex))
+            {
+                director.RequestFielderMove(fielderIndex, Vector2.zero);
+                int choice = Mathf.Clamp(actions.DiscreteActions[0], 0, SimplifiedThrowTargetCount - 1);
+                director.RequestFielderThrow(fielderIndex, (ThrowTarget)(choice + 1));
+                return;
+            }
             var continuous = actions.ContinuousActions;
             // 성분별로 자르면 큰 행동이 (±1, ±1)로 몰려 원래 방향을 잃는다. 명령 경계에서 벡터 크기만 제한한다.
             director.RequestFielderMove(fielderIndex, new Vector2(continuous[0], continuous[1]) * MoveActionGain);
             int target = actions.DiscreteActions[0];
-            if (target > 0 && target < ThrowTargetCount && director.BallHolder == fielderIndex)
+            if (!director.SimplifiedFielding && target > 0 && target < ThrowTargetCount && director.BallHolder == fielderIndex)
                 director.RequestFielderThrow(fielderIndex, (ThrowTarget)target);
         }
 
@@ -135,11 +146,12 @@ namespace BaseballSimulation
         /// </summary>
         public override void WriteDiscreteActionMask(IDiscreteActionMask actionMask)
         {
+            if (director != null && director.SimplifiedFielding) return; // 세 베이스 모두 허용하며, 공이 없을 때는 선택을 실행하지 않는다.
             bool canThrow = director != null && director.CanThrow(fielderIndex);
             for (int target = 1; target < ThrowTargetCount; target++) actionMask.SetActionEnabled(0, target, canThrow);
         }
 
-        /// <summary>학습기·모델이 없을 때의 중립 행동: 제자리에 서 있고 송구하지 않는다.</summary>
+        /// <summary>학습기·모델이 없을 때 이동 0. 단순 수비의 포구 후 선택 0은 1루 송구다.</summary>
         public override void Heuristic(in ActionBuffers actionsOut)
         {
             actionsOut.Clear();

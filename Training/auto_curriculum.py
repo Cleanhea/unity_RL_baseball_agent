@@ -29,18 +29,20 @@ BUILDS = TRAINING / "builds"
 # in the player and mlagents-learn times out waiting for agents.
 WORK = Path(tempfile.gettempdir()).resolve() / "baseball-curriculum-build"
 NAMES = {1: "Stage1_Batter", 2: "Stage2_BatterPitcher", 3: "Stage3_FullTeam"}
-RUN_IDS = {1: "stage1_batter", 2: "stage2_batter_pitcher", 3: "stage3_full_team"}
-CONFIGS = {stage: TRAINING / "config" / (run_id + ".yaml") for stage, run_id in RUN_IDS.items()}
+RUN_IDS = {1: "stage1_batter_camera_power", 2: "stage2_batter_pitcher_camera", 3: "stage3_full_team_camera_cf"}
+CONFIGS = {stage: TRAINING / "config" / (name + ".yaml") for stage, name in
+           {1: "stage1_batter", 2: "stage2_batter_pitcher", 3: "stage3_full_team"}.items()}
 BEHAVIORS = {1: ("BaseballBatter",), 2: ("BaseballBatter", "BaseballPitcher"),
              3: ("BaseballBatter", "BaseballPitcher", "BaseballRunner", "BaseballFielder")}
 # Self-play variants of stages 2-3 keep their own results so they never mix with simultaneous training.
-SELF_PLAY_RUN_IDS = {2: "stage2_batter_pitcher_selfplay", 3: "stage3_full_team_selfplay"}
+SELF_PLAY_RUN_IDS = {2: "stage2_batter_pitcher_camera_selfplay", 3: "stage3_full_team_camera_cf_selfplay"}
 
 
 def use_self_play() -> None:
     """Switch stages 2-3 to the self-play configs and run ids. Stage 1 has no opponent and is shared."""
     RUN_IDS.update(SELF_PLAY_RUN_IDS)
-    CONFIGS.update({stage: TRAINING / "config" / (run_id + ".yaml") for stage, run_id in SELF_PLAY_RUN_IDS.items()})
+    CONFIGS.update({stage: TRAINING / "config" / name for stage, name in
+                    {2: "stage2_batter_pitcher_selfplay.yaml", 3: "stage3_full_team_selfplay.yaml"}.items()})
 
 
 def say(message: str) -> None:
@@ -138,12 +140,31 @@ def latest_step(stage: int, behavior: str) -> int:
     return samples[-1].step
 
 
+def stage1_qualified_hit_rate() -> float:
+    """Count strong fair hits per PA, including misses/walks as zero; use only full-control summaries."""
+    from tensorboard.backend.event_processing import event_accumulator
+
+    directory = RESULTS / RUN_IDS[1] / "BaseballBatter"
+    events = sorted(directory.glob("events.out.tfevents*"), key=lambda path: path.stat().st_mtime)
+    if not events:
+        raise FileNotFoundError(f"No stage-1 TensorBoard events: {directory}")
+    accumulator = event_accumulator.EventAccumulator(str(events[-1]), size_guidance={"scalars": 0})
+    accumulator.Reload()
+    lessons = {v.step: v.value for v in accumulator.Scalars("Batter Training/Lesson")}
+    samples = accumulator.Scalars("Batter Training/Qualified Hit")
+    full = [v.value for v in samples if lessons.get(v.step, -1) >= 2.999]
+    if len(full) < 3:
+        raise RuntimeError("Stage 1 needs at least 3 FullBatting qualified-hit summaries before stage 2.")
+    return sum(full[-3:]) / 3
+
+
 def check_stage_finished(stage: int) -> None:
     # The final model can also be written on interruption. Require progress near
     # the configured max_steps before continuing to the next stage.
     import yaml
 
     config = yaml.safe_load(CONFIGS[stage].read_text(encoding="utf-8"))
+    finished = []
     for behavior in BEHAVIORS[stage]:
         directory = RESULTS / RUN_IDS[stage]
         checkpoint = directory / behavior / "checkpoint.pt"
@@ -155,6 +176,16 @@ def check_stage_finished(stage: int) -> None:
         step = latest_step(stage, behavior)
         if step < required:
             raise RuntimeError(f"Stage {stage} {behavior} ended at {step:,} steps; expected at least {required:,}")
+        finished.append((behavior, step))
+    if stage == 1:
+        training_status = RESULTS / RUN_IDS[stage] / "run_logs" / "training_status.json"
+        state = json.loads(training_status.read_text(encoding="utf-8"))
+        if state.get("batter_lesson", {}).get("lesson_num", -1) != 3:
+            raise RuntimeError("Stage 1 has not reached FullBatting; do not advance to stage 2 based on step count alone.")
+        rate = stage1_qualified_hit_rate()
+        if rate < 0.25:
+            raise RuntimeError(f"Stage 1 qualified-hit rate is {rate:.1%}; require at least 25% across the last 3 FullBatting summaries before stage 2.")
+    for behavior, step in finished:
         say(f"Stage {stage} {behavior} finished at {step:,} steps")
 
 
@@ -191,9 +222,10 @@ def run_stage(stage: int, trainer: Path, torch_device: str | None, initialize_fr
     if not player(stage).is_file():
         raise FileNotFoundError(f"Missing Unity player: {player(stage)}")
     # The registered fielder trainer is selected by the Stage 3 YAML.
+    # Visual observations require a graphics device; do not pass --no-graphics.
     command = [str(trainer), str(CONFIGS[stage]), f"--run-id={RUN_IDS[stage]}",
                f"--results-dir={RESULTS}", f"--env={player(stage)}",
-               "--no-graphics", "--base-port=5010"]
+               "--base-port=5010"]
     if initialize_from:
         command.append(f"--initialize-from={initialize_from}")
     if torch_device:
